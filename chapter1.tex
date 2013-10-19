@@ -1,0 +1,25 @@
+%----------------------------------------------------------------------------
+\chapter{Elméleti áttekintés \textcolor{red}{TODO}}
+%----------------------------------------------------------------------------
+
+%----------------------------------------------------------------------------
+\section{Paralell rendszerek} motivációjuk, fejlődésük %TODO
+%----------------------------------------------------------------------------
+    \subsection{Paralell rendszerek kommunikációja} 
+        Többszálú, elosztott rendszerek. Locking, lock-free structures, token based shared data.
+    \subsection{Rendszer holtpontja} Definíció, szemléletes példa, mi okozza, mik a tünetek, milyen elméleti megoldások léteznek (erőforráselvétel, zár hierarchia, egylépéses zárolás, ...), elkerülés és megelőzés.
+
+%----------------------------------------------------------------------------
+\section{Holtpontmegelőzés a gyakorlatban} Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
+%----------------------------------------------------------------------------
+
+    \subsection{Hierarchikus zárolás} Zárakhoz számokat rendelünk, thread local tároljuk a zárolt lockok számát, stb.
+    \subsection{Egylépéses zárolás} C++11 std::lock()
+    \subsection{Lock-free adatstruktúrák} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
+    \subsection{Token alapú adathozzáférés} Shared data atomic pointere swappelődik a threadek között.
+
+%----------------------------------------------------------------------------
+\section{Holtpontdetektálás a gyakorlatban} Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
+%----------------------------------------------------------------------------
+    \subsection{Tünetvizsgálat} CPU usage, progress monitorozása
+    \subsection{Intel® Parallel Studio XE 2013} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
