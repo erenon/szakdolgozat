@@ -13,14 +13,32 @@
 \section{Holtpontmegelőzés a gyakorlatban} Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
 %----------------------------------------------------------------------------
 
-    \subsection{Hierarchikus zárolás} Zárakhoz számokat rendelünk, thread local tároljuk a zárolt lockok számát, stb.
+    \subsection{Hierarchikus zárolás} 
+    A holtpont definíciót megvizsgálva láthatjuk, hogy holtpont akkor fordulhat elő, ha az egyik végrehajtó egység lefoglalt egy erőforráshalmazt, majd ezután egy másikat szeretne kisajátítani, miközben azt már egy másik végrehajtó egység lefoglalta, ami az előbbi halmaz egy elemére vár. Ez megegyezik azzal az esettel, ha a szálak a kérdéses erőforrások halmazának bármely két elemét \emph{különböző sorrendben} zárolnák. A felismerés alapján adódik a hierarchikus zárolás technikájának ötlete: Definiáljunk az erőforrások halmazán egy teljes rendezést. A szálak csak a definiált sorrend szerint növekvő sorrendben zárolhatják az egyes entitásokat, a holtpont kialakulását elkerülendő. 
+    
+    Ha sikerül a két feltételt betartani, biztosak lehetünk abban, hogy a vizsgált erőforrásokat használó szálak között nem fog holtpont kialakulni. Az entitások rendezéséhez célszerű lenne, ha mindegyikhez egy számértéket rendelnénk, ami alapján egyértelműen adódna a sorrend. Ha a memóriacímet használjuk erre a célra, matematikai értelemben megfelelő rendezést kapunk, azonban ez a sorrend fordításról fordításra (különböző architektúrákon, operációs rendszereken, eltérő fordító kapcsolók esetén vagy pusztán a kód megváltoztatása miatt), valamint futtatásról futtatásra változhat (ASLR-t használó futtatókörnyezet esetén \cite{WikiASLR}, vagy ha a memória nincs virtualizálva). A memóriacím változó jellege miatt nagyon körülményes visszakozó megoldásokat kell alkalmazni az erőforrások zárolása során, melyek erőforráspazarlóak (a sorozatos visszalépések és újrapróbálkozások miatt) vagy nagyon bonyolult struktúrákhoz vezetnek (előre meg kell határozni az erőforrások lefoglalásának sorrendjét és ehez igazítani a műveletek sorrendjét is) melyek rendszerint nem is alkalmazhatóak és karbantartásuk nagyon költséges.
+    
+    Memóriacímek helyett adjunk manuálisan sorszámot az egyes erőforrásoknak. Ez rendszerint egy tagváltozó beállításával történik, de bizonyos szigorú követelmények mellett (zárak csak globális változók vagy amennyiben tagváltozók, a befoglaló osztályból csak egy példány lehet, mindegyik egy fordítási egységben vagy fájlban van definiálva) használhatunk preprocesszor makrókat, pl.: \texttt{\_\_LINE\_\_} vagy \cite{BOOST-PP-COUNTER()}. A \cite{C++11/Lockable} modellt kiterjesztő beszámozható erőforrásburkoló a következőképpen nézhet ki:
+    
+    \includecpp{hierarchical-locking}{6}{36}
+    
+    A fenti példa két problémára is megoldást nyújt: lehetőséget ad az egyes entitások beszámozására az inicializáláskor, valamint biztosítja azt, hogy az egyes szálak csak a legutóbb zárolt de még nem elengedett erőforrás azonosítójánál nagyobb azonosítójú erőforrást zárolhassanak. Az ellenőrző rutin által dobott kivételt nem ajánlott elkapni, a hibát kiváltó szál működését kell a kialakított sorrendhez alakítani. Az ellenőrzés helyes működéséhez szükség van egy szálspecifikus tárolóban elhelyezett veremre, ami a foglalások sorrendjét jegyzi. Fontos megjegyezni, hogy a \texttt{thread\_local} tárolási osztály leíró (\emph{Storage class specifier}) és a benne tárolt nem \cite{C++11/POD}-típusú elemek jelenleg gyengén támogatottak, így egyes platformokon (pl.: GCC version < 4.8) szükséges lehet \texttt{thread\_local} helyett a \texttt{\_\_thread} leíró használata, vagy a verem helyett csak egy veremre mutató pointer tárolása, amit az egyes szálak indításakor inicializálni kell.
+    
+    A megoldás hátránya, hogy az egyes erőforrásokat már tervezési időben rendezni kell (legalább valamilyen fa struktúrába), hogy az egyes szálak működése ennek megfelelően legyen kialakítva. Ha a sorrend meghatározása a fejlesztés megfelelően korai fázisában elmarad, később csak komoly erőfeszítések árán pótolható, mivel az egyes szálak működésének megváltoztatását vonhatja maga után. 
+    
+    A másik probléma egy elemenként zárolható listával modellezhető. Tegyük fel, hogy az egyik algoritmusunk a listát balról jobbra tudja hatékonyan feldolgozni, az egyedi elemeket folyamatosan, egymás után zárolva, de nem elengedve, míg egy másik algoritmus ugyan ezt tudja, csak jobbról balra. Ha az elemekhez rendelt zárakat a nekik megfelelő sorban szeretnénk lefoglalni, az egyik algoritmus úgy kell megváltoztatni, hogy az az összes elemet egyszerre (vagy legalábbis igényeihez képest ellentétes irányban) zárolja, ami rontja a hatékonyságát. Ha nem szeretnénk egyik algoritmust sem megváltoztatni, használhatunk egy lista szintű zárat, ez viszont csökkenti a zárolás granualitását, ami adott esetben kritikus lehet.
+    
+    Az elemenként zárolható lista példája életszerűtlennek tűnhet, viszont az ezzel modellezhető problémák (pl.: üzenet propagálása egy architektúra rétegein keresztül) nagyonis életszerűek.
+    
+    A hierarchikus zárolás technika alkalmazása olyan feladatokban, ahol az adatfolyam iránya egyértelmű, sikerrel használható, de különös körültekintést és alapos tervezést igényel, ellenben a fent bemutatott példának a futásidejű többletterhelése nem szignifikáns. Ezzel szemben már létező, karbantartandó, a technikát nem alkalmazó problémás alkalmazások ilyen módú kijavítása ritkán vezet eredményre és komoy erőfeszítést igényel. Olyan feladatok esetén, ahol az egyes komponensek kommunikációjának iránya nem egyértelmű, a technika nem alkalmazható jelentős teljesítménybeli degradáció nélkül.
+    
     \subsection{Egylépéses zárolás}
     
     A holtpont megelőzhető úgy, ha minden szál a szükséges erőforrásokat egy lépésben foglalja le. Ennek menete a következő: A szál meghatározza a zárolandó entitásokat, majd sorban megpróbálja őket lefoglalni. Amennyiben valamelyik erőforrás foglalt, az összes többit elengedi, majd várakozni kezd a foglalt entitásra. A C++11 \texttt{std::lock()} metódusa is ezt a működést valósítja meg \cite{C++11/lock}:
     
     \includecpp{stdlock}{11}{19}
 %    
-    A fenti megoldás hibája, ha a {lock()} hívás után bármelyik művelet kivételt eredményez, a mutexek zárva maradnak. Java vagy C\# környezetben bevett szokás a probléma megoldására egy \texttt{try-finally} blokkot vonni a védett operációk köré, és a \texttt{finally} blokkban végezni az erőforrások felszabadítását. C++ esetében a preferált megoldás a \texttt{RAII} idiom \cite{ExceptionalC++} alkalmazása.
+    A fenti megoldás hibája, ha a {lock()} hívás után bármelyik művelet kivételt eredményez, a mutexek zárva maradnak. Java vagy C\texttt{\#} környezetben bevett szokás a probléma megoldására egy \texttt{try-finally} blokkot vonni a védett operációk köré, és a \texttt{finally} blokkban végezni az erőforrások felszabadítását. C++ esetében a preferált megoldás a \texttt{RAII} idiom \cite{ExceptionalC++} alkalmazása.
     
     \includecpp{stdlock}{23}{31}
 %    
@@ -45,7 +63,6 @@
     További problémája a technikának, ha a lefoglalandó erőforrások egy részét csak futási időben ismerjük meg, egy másik zárolandó entitással történő interakció után. Ilyenkor csak nagyon körülményesen, vagy akár (csak futásidőben ismert számú erőforrás esetén) sehogyan sem tudjuk alkalmazni a megoldást.
     
     Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítmény komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
-    % TODO ertekeles: granualitas
     
     \subsection{Lock-free adatstruktúrák} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
     \subsection{Token alapú adathozzáférés} Shared data atomic pointere swappelődik a threadek között.
