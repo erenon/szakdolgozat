@@ -111,6 +111,16 @@
 \DeclareMathOperator{\rot}{rot}
 \definecolor{lightgray}{rgb}{0.95,0.95,0.95}
 
+% setup listing macro
+\newcommand{\includecpp}[3]{
+    \medskip    
+    \lstset{
+        basicstyle=\footnotesize\ttfamily
+    }    
+        \lstinputlisting[language=C++, firstline=#2, lastline=#3]{sources/#1.cpp}
+    \medskip
+}
+
 \author{\vikszerzo}
 \title{\viktitle}
 \includeonly{
@@ -163,9 +173,9 @@ aboveskip=10pt}
 
 \bibliography{mybib}
 \addcontentsline{toc}{chapter}{Irodalomjegyzék}
-\bibliographystyle{plain}
+\bibliographystyle{abstract}
 
-\include{appendices}
+%\include{appendices}
 
 \label{page:last}
 \end{document}
