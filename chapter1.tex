@@ -14,7 +14,39 @@
 %----------------------------------------------------------------------------
 
     \subsection{Hierarchikus zárolás} Zárakhoz számokat rendelünk, thread local tároljuk a zárolt lockok számát, stb.
-    \subsection{Egylépéses zárolás} C++11 std::lock()
+    \subsection{Egylépéses zárolás}
+    
+    A holtpont megelőzhető úgy, ha minden szál a szükséges erőforrásokat egy lépésben foglalja le. Ennek menete a következő: A szál meghatározza a zárolandó entitásokat, majd sorban megpróbálja őket lefoglalni. Amennyiben valamelyik erőforrás foglalt, az összes többit elengedi, majd várakozni kezd a foglalt entitásra. A C++11 \texttt{std::lock()} metódusa is ezt a működést valósítja meg \cite{C++11/lock}:
+    
+    \includecpp{stdlock}{11}{19}
+%    
+    A fenti megoldás hibája, ha a {lock()} hívás után bármelyik művelet kivételt eredményez, a mutexek zárva maradnak. Java vagy C\# környezetben bevett szokás a probléma megoldására egy \texttt{try-finally} blokkot vonni a védett operációk köré, és a \texttt{finally} blokkban végezni az erőforrások felszabadítását. C++ esetében a preferált megoldás a \texttt{RAII} idiom \cite{ExceptionalC++} alkalmazása.
+    
+    \includecpp{stdlock}{23}{31}
+%    
+    A \texttt{lock\_guard} burkoló osztályok gondoskodnak arról, hogy megsemmisülésükkor elengedjék a felügyelt mutexet. Mivel kivétel keletkezése esetén a vezérlés elhagyja a kapcsos zárójelek által határolt blokkot, meghívódik az őr példányok destruktora és a fenti működés érvényre jut, biztosítva ezzel az inkonzisztens állapot kialakulásának megakadályozását. A \texttt{lock\_guard} konstruktora alapértelmezett esetben megpróbálja a felügyelt erőforrást zárolni, a \texttt{std::adopt\_lock} címke feltüntetésével jelezzük, hogy erre már nincs szükség.
+    
+    Megjegyzendő, hogy a fenti technikák nem csak a standard könyvtár mutex típusával működnek, hanem bármilyen más típussal, ami kielégíti a \texttt{Lockable} modell követelményeit \cite{C++11/Lockable}. A megvalósítandó metódusok rövid leírásukkal a következőek:
+    
+\begin{description}
+    \item[\texttt{lock()}:] Blokkol addig, amíg nem tudja zárolni az erőforrást. Amennyiben kivétel keletkezik, az erőforrás nem marad zárolva.
+    \item[\texttt{unlock()}:] Felszabadítja az erőforrást, kivételt nem válthat ki.
+    \item[\texttt{try\_lock()}:] Blokkolás nélkül megkísérli zárolni az erőforrást, a sikerességet visszatérési értékével jelzi.
+\end{description}
+%
+    A fentiek figyelembe vételével könnyen készíthetünk olyan burkoló osztályokat, amelyek a standard könyvtár zárolást támogató eszközeivel együttműködve használható és olyan erőforrásokat felügyel, amelyek alapértelmezetten nem támogatják a párhuzamos hozzáférést (pl.: adatbázis-kapcsolat, hálózati leíró).
+    
+    A bemutatott megoldás megelőzi a holtpontot kialakulását, mivel a \texttt{std::lock()} hívást végrehajtó szál ahelyett, hogy más erőforrásokat zárolva tartva várakozna, a sikeresen kisajátított zárakat először elengedi, és utána kezdi meg a várakozást, így nem alakulhat ki egymásra várás, mivel ha valaki várakozik, akkor nem birtokol erőforrásokat.
+    
+    Holtpont helyett viszont más problémák merülnek fel: a leírt visszakozás, \emph{backoff} stratégia alkalmazása során fenyeget a \emph{livelock} kialakulásának veszélye: a végrehajtó egységek nagyon udvariasan újra és újra elengedik a már lefoglalt erőforrásokat, érdemi előrelépés nélkül. A gyorsan ismétlődő visszakozásokból adódóan a \emph{livelock} szituációk súlyosan degradálják a rendszer teljesítményét.
+    
+    A megoldás másik hátránya a zárolási granualitás problémája. Ha több, egymásra épülő műveletet szeretnénk végrehajtani, hagyományos esetben a későbbi műveletek által igényelt erőforrások kisajátítását későbbre halaszthatjuk, így növelve a multiprogramozás fokát és a rendszer teljesítményét. Egylépéses zárolás esetén kénytelenek vagyunk minden entitást előre lefoglalni, így feleslegesen hosszú időre (túl korán) kisajátítani azokat, kizárva annak a lehetőségét, hogy más szálak azokon műveleteket végezhessenek, amikor ezt a végrehajtott műveletsor nem indokolja. Különösen rossz a helyzet akkor, ha (egy másik foglalás mellett) zárolható entitások listáján kell műveletet végeznünk: ahelyett, hogy csak az aktuális elemet sajátítanánk ki, kénytelenek vagyunk a teljes lista összes elemét zárolnunk, feleslegessé téve ezzel az elemszintű mutexeket, a konkurencia szintjét gyakorlatilag nullára csökkentve.
+    
+    További problémája a technikának, ha a lefoglalandó erőforrások egy részét csak futási időben ismerjük meg, egy másik zárolandó entitással történő interakció után. Ilyenkor csak nagyon körülményesen, vagy akár (csak futásidőben ismert számú erőforrás esetén) sehogyan sem tudjuk alkalmazni a megoldást.
+    
+    Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítmény komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
+    % TODO ertekeles: granualitas
+    
     \subsection{Lock-free adatstruktúrák} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
     \subsection{Token alapú adathozzáférés} Shared data atomic pointere swappelődik a threadek között.
 
