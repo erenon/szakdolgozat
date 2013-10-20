@@ -3,11 +3,51 @@
 %----------------------------------------------------------------------------
 
 %----------------------------------------------------------------------------
-\section{Paralell rendszerek} motivációjuk, fejlődésük %TODO
+\section{Paralell rendszerek}
 %----------------------------------------------------------------------------
-    \subsection{Paralell rendszerek kommunikációja} 
+
+A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelenésük óta \cite{Moore} törvényének megfelelően minden két évben megduplázódik. Az exponenciális növekedés lehetővé teszi a processzorok órajelének felskálázását, nagyobb memóriák előállítását, sőt, még a digitális kamerák szenzorainak pixelméretét is érinti. A jelenlegi tranzisztor koncepció és gyártástechnológia nem enged meg atomi méretnél kisebb tranzisztorokat, így a hagyományos tranzisztorok exponenciális növekedésben idővel letörés várható, azonban a processzorok órajelének növekedését már most egy sokkal súlyosabb akadály hátráltatja: a rengeteg, kis helyre zsúfolt félvezető eszköz hőterhelése olyan nagy, hogy az eszköz önmagát megrongálja. A jelenség miatt a processzor órajel növekedés mértéke a 2000-es évek elején csökkenésnek indult \cite{CMOS-VLSI}. A technikai fejlődés folytonossága érdekében a félvezetőgyártók -- a tranzisztorok zsúfoltságát csillapítandó -- egy processzorba több végrehajtó egységet (\emph{magot}) kezdek integrálni, melyek párhuzamosan dolgozva képesek egységnyi idő alatt több utasítást végrehajtani, a hőterhelés túlzott koncentrálása nélkül, ezzel megnyitva egy új korszakot a modern szoftverfejlesztésben.
+
+    A többmagos rendszerek megjelenése egy sor új lehetőséget és kihívást állít a szoftverfejlesztők elé, akik ki akarják használni a konkurens rendszerek képességeit, azaz több szálat, folyamatot kívánnak párhuzamosan utilizálni. A piaci lehetőség elsősorban abban rejlik, hogy az a szoftver, ami képes elosztottan működni, és így teljesítménye a végrehajtóegységek számának növekedésével jól skálázódik, szignifikánsan hatékonyabb, mint azok, amik nem képesek erre. Az ebben az értelemben hatékony rendszerek fejlesztési költségeinek megnövekedését a konkurens rendszerek természetéből fakadók kihívások okozzák. (Megjegyzendő, hogy a többszálú alkalmazások megjelenése megelőzte a többmagos processzorok elterjedését, utóbbi csak növelte a konkurens természet jelentőségét.)
+    
+    % nem determinisztikussag 
+    Az egyik legfontosabb különbség, amivel a programozó egy konkruens rendszer fejlesztése során szembesül, hogy az utasítások végrehajtásának sorrendje nem determinisztikus a többszálúság végett. Ennek következtében nem elég a program működésével \emph{nagyjából} tisztában lenni, nem lehet néhány tesztesetet lefuttatva megbizonyosodni a funkcionalitás helyességéről: bármikor előfordulhat, hogy a teszteset futtatásakor éppen kedvező volt a szálak ütemezése, és így a végeredmény értelmében helyes működés volt megfigyelhető, azonban a program hibás, más ütemezés, időzítés esetén viszont ennek megfelelően hibás eredményre fog jutni. A párhuzamosan futó szálak helyes működésének biztosítását és a szinkronizációs lehetőségeket az \ref{sec:communication_of_parallel_systems} szakasz tárgyalja.
+    
+    % parhuzamosithato reszek felderitese, 
+    Az előbbi, leginkább technikai nehézségen megoldandó problémát jelent egy program komponenseinek párhuzamosítása. A fejlesztőnek azonosítania kell azokat a részeket, amelyek képesek egymástól függetlenül működni, nem támaszkodnak a másik eredményeire, így az egyes tevékenységek külön szálakon végezhetőek, akár egy időben is. Az ilyen egyszerű módon párhuzamosítható feladatokat nevezzük triviálisan párhuzamosíthatónak. Triviálisan párhuzamosítható algoritmus a mátrixszorzás algoritmusa: $\bm A \cdot \bm B = \bm C$ esetén $\bm C_{i, j}$ értéke csak $\bm A_i$ és $\bm B_j$ függvénye. A jól párhuzamosítható algoritmusok fejlesztése aktív kutatási terület.
+    
+    Más esetekben előfordulhat, hogy két komponens függ egymástól, működésük mégis átlapolható: ha $B$ feladat $i+1.$ iterációja csak $A$ feladat $i.$ iterációjától függ, a két feladat $i+1.$ iterációja futhat párhuzamosan. Egy ilyen típusú feladatra példa lehet egy olyan rendszer, ami szövegfájlokat dolgoz fel és az eredményeit egy adatbázisba írja. A fenti definíciónál maradva itt $A$-val jelölhetjük a fájl egy nagyobb részének beolvasását és feldolgozását, míg $B$-vel az adatbázis írását. Amíg $A$ olvassa a fájlt és a lemezművelet miatt blokkolódik, $B$ kiírhatja az előző számítás eredményeit, fordítva pedig amikor $B$ az adatbázisművelet befejezésére vár, $A$ olvashatja és feldolgozhatja a bemeneti fájl következő darabját. Az ilyen típusú szétcsatolások felderítése és kiaknázása jelenti a szoftverek párhuzamosításának elsődleges célpontját.
+    
+    Léteznek továbbá olyan algoritmikus problémák, amelyek szándékosan úgy lettek megalkotva, hogy ne lehessen őket disztributálni. A \cite{bcrypt} kriptográfiai algoritmus a bemenetén specifikált értékkel arányosan sok iterációt végez, továbbá minden egyes iteráció támaszkodik az előző eredményére. Ebben az esetben a motiváció az elosztott és párhuzamos rendszerek által végzett kódtörés elleni védelem elősegítése.
+    
+    % Itanium
+    Felmerül a kérdés, hogyha a teljesítménynövekedés ennyire egyértelmű, miért nem végzi el a párhuzamosítható részek keresését a fordító program vagy a processzor, ahogy teszik azt számos más optimalizáció esetében. Mivel a processzor nem ismerheti a végrehajtandó utasítások szemantikáját, magas szintű párhuzamosíthatóság felderítésére aligha van lehetőség. Ellenben a fordítóprogram által párhuzamosított program végrehajtását támogató utasításkészletek léteznek, például a \cite{VLIW}, vagy az Intel Itanium processzorcsalád alapja, az \cite{EPIC}. Az ilyen architektúrájú processzorok lényegében több párhuzamos csővezetékkel (\emph{pipeline}) rendelkeznek, melyekben képesek párhuzamos utasításvégrehajtásra. A megközelítés hátránya, hogy a hatékony működéshez megfelelő heurisztikákat alkalmazó fordítókra lenne szükség, azonban ezek a mai napig kutatás tárgyát képezik.
+    
+    A párhuzamosított programokat futtatni képes konkurens rendszerek sem jelentenek tetszőleges mértékben skálázható teljesítménynövekedést. \cite{Amdahl} törvénye kimondja, hogyha a programunknak csupán $B$ hányada nem párhuzamosítható (márpedig ilyen hányad napjaink programjainak természetéből fakadóan mindig akad, pl.: futtatókörnyezet inicializáció, felhasználói interakcióra várakozás, adatbázis és hálózati műveletek, stb.), és ezt a programot egy $n$ szálat párhuzamosan futtatni képes processzoron futtatjuk, akkor a végrehajtáshoz szükséges idő arányos lesz $T(n)$-nel:
+    
+    \begin{equation}
+        T(n) = T(1)\big(B+\frac{1}{n}(1-B)\big)
+    \medskip
+    \end{equation}
+%    
+    Ebből következően az elméleti sebességnövekedés adott rendszeren $S(n)$:
+    
+    \begin{equation} \label{eq:amdahl}
+        S(n) = \frac{T(1)}{T(n)} = \frac{1}{B+\frac{1}{n}(1-B)}
+    \medskip
+    \end{equation}
+%
+%   \eqref{eq:amdahl} fails to ref for some reason.
+    Az $(1.2)$ egyenletbe $B = 0.05$ értéket helyettesítve $\lim\limits_{n \rightarrow \infty}{S(n)}$ értéke $20$-nak adódik, avagy ha programunknak csak $5\%$-a nem párhuzamosítható, hiába futtatjuk a fennmaradó részét akár végtelen sok feldolgozó egységgel rendelkező architektúrán, csupán hússzoros teljesítménynövekedést érhetünk el.
+
+    \subsection{Paralell rendszerek kommunikációja} \label{sec:communication_of_parallel_systems} 
         Többszálú, elosztott rendszerek. Locking, lock-free structures, token based shared data.
-    \subsection{Rendszer holtpontja} Definíció, szemléletes példa, mi okozza, mik a tünetek, milyen elméleti megoldások léteznek (erőforráselvétel, zár hierarchia, egylépéses zárolás, ...), elkerülés és megelőzés.
+    \subsection{Rendszer holtpontja} 
+    %Definíció, szemléletes példa, mi okozza, mik a tünetek, milyen elméleti megoldások léteznek (erőforráselvétel, zár hierarchia, egylépéses zárolás, ...), elkerülés és megelőzés.
+    
+    A következőkben tekinktsünk egy rendszerre, mint különböző feladatokat végrehajtó ágensek halmazára. Egy ágens eseményekre vár és bizonyos események hatására műveleteket végez, majd eseményeket vált ki. Ekkor egy rendszer valamely $H$ részhalmaza holtponton van akkor, ha $H$ minden eleme olyan eseményre vár, amit csak $H$ egy másik eleme tud kiváltani. Ha a rendszer bármely részhalmaza holtpontra jut, az adott rész működése leáll, gyakran magával vonva a teljes rendszer használhatatlanná válását. A fenti definícióra egy szemléletes példa a \cite{DiningPhilosophers} probléma, mely röviden a következő képpen vázolható: Egy terített asztal körül filozófusok ülnek. A teríték különlegessége, hogy mindegyikük között csak pontosan egy evőeszköz található, azonban ahoz, hogy étkezzenek, két evőeszközre van szükségük. Ekkor ha mindegyikük először a jobb oldali evőeszközt veszi kézbe, körkörös várakozás alakul ki a bal oldali evőeszközre várva, vagyis az étkezőasztal, mint rendszer, holtpontra jutott.
+    
+    Holtpont előfordulhat a tárgyalta paralell rendszerek esetében is. Ekkor a rendszer (az étkezőasztal) egy futó folyamat, a végrehajtó ágensek (a filozófusok) pedig a folyamat szálai. A definíció és a továbbiakban tárgyalt problémak és megoldások ugyanígy kiterjeszthetőek kisebb felbontású problémákra is, például elosztott rendszerekre, ahol a rendszer a teljes fürtnek, a végrehajtó ágensek pedig az egyes fürtbe kapcsolt számítógépeknek felelnek meg. \textcolor{red}{TODO} % TODO
 
 %----------------------------------------------------------------------------
 \section{Holtpontmegelőzés a gyakorlatban} Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
