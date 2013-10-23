@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------
-\chapter{Elméleti áttekintés \textcolor{red}{TODO}}
+\chapter{Elméleti áttekintés}
 %----------------------------------------------------------------------------
 
 %----------------------------------------------------------------------------
@@ -40,17 +40,37 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
 %   \eqref{eq:amdahl} fails to ref for some reason.
     Az $(1.2)$ egyenletbe $B = 0.05$ értéket helyettesítve $\lim\limits_{n \rightarrow \infty}{S(n)}$ értéke $20$-nak adódik, avagy ha programunknak csak $5\%$-a nem párhuzamosítható, hiába futtatjuk a fennmaradó részét akár végtelen sok feldolgozó egységgel rendelkező architektúrán, csupán hússzoros teljesítménynövekedést érhetünk el.
 
-    \subsection{Paralell rendszerek kommunikációja} \label{sec:communication_of_parallel_systems} 
+    \subsection{Paralell rendszerek kommunikációja \textcolor{red}{TODO}} \label{sec:communication_of_parallel_systems} 
         Többszálú, elosztott rendszerek. Locking, lock-free structures, token based shared data.
     \subsection{Rendszer holtpontja} 
-    %Definíció, szemléletes példa, mi okozza, mik a tünetek, milyen elméleti megoldások léteznek (erőforráselvétel, zár hierarchia, egylépéses zárolás, ...), elkerülés és megelőzés.
+      
+    A következőkben tekinktsünk egy rendszerre, mint különböző feladatokat végrehajtó ágensek halmazára. Egy ágens eseményekre vár és bizonyos események hatására műveleteket végez, majd eseményeket vált ki. Ekkor egy rendszer valamely $H$ részhalmaza holtponton van akkor, ha $H$ minden eleme olyan eseményre vár, amit csak $H$ egy másik eleme tud kiváltani. Ha a rendszer bármely részhalmaza holtpontra jut, az adott rész működése leáll, gyakran magával vonva a teljes rendszer használhatatlanná válását. A fenti definícióra egy szemléletes példa a \cite{DiningPhilosophers} probléma, mely röviden a következő képpen vázolható: Egy terített asztal körül filozófusok ülnek. A teríték különlegessége, hogy mindegyikük között csak pontosan egy evőeszköz található, azonban az étkezés megkezdéséhez két evőeszközre van szükségük. Ekkor ha mindegyikük először a jobb oldali evőeszközt veszi kézbe, a bal oldali felvétele előtt várakozásra kényszerül, mivel az bal szomszédjának jobb oldali evőeszköze volt, tehát éppen használatban van. Így kölcsönös egymásra várás alakul ki, tehát az étkezőasztal, mint rendszer, holtpontra jut.
     
-    A következőkben tekinktsünk egy rendszerre, mint különböző feladatokat végrehajtó ágensek halmazára. Egy ágens eseményekre vár és bizonyos események hatására műveleteket végez, majd eseményeket vált ki. Ekkor egy rendszer valamely $H$ részhalmaza holtponton van akkor, ha $H$ minden eleme olyan eseményre vár, amit csak $H$ egy másik eleme tud kiváltani. Ha a rendszer bármely részhalmaza holtpontra jut, az adott rész működése leáll, gyakran magával vonva a teljes rendszer használhatatlanná válását. A fenti definícióra egy szemléletes példa a \cite{DiningPhilosophers} probléma, mely röviden a következő képpen vázolható: Egy terített asztal körül filozófusok ülnek. A teríték különlegessége, hogy mindegyikük között csak pontosan egy evőeszköz található, azonban ahoz, hogy étkezzenek, két evőeszközre van szükségük. Ekkor ha mindegyikük először a jobb oldali evőeszközt veszi kézbe, körkörös várakozás alakul ki a bal oldali evőeszközre várva, vagyis az étkezőasztal, mint rendszer, holtpontra jutott.
+    Holtpont előfordulhat a tárgyalt paralell rendszerek esetében is. Ekkor a rendszer (az étkezőasztal) egy futó folyamat, a végrehajtó ágensek (a filozófusok) pedig a folyamat szálai. A definíció és a továbbiakban tárgyalt problémak és megoldások ugyanígy kiterjeszthetőek nagyobb léptékű problémákra is, például elosztott rendszerekre, ahol a rendszer a teljes fürtnek, a végrehajtó ágensek pedig az egyes fürtbe kapcsolt számítógépeknek felelnek meg.
     
-    Holtpont előfordulhat a tárgyalta paralell rendszerek esetében is. Ekkor a rendszer (az étkezőasztal) egy futó folyamat, a végrehajtó ágensek (a filozófusok) pedig a folyamat szálai. A definíció és a továbbiakban tárgyalt problémak és megoldások ugyanígy kiterjeszthetőek kisebb felbontású problémákra is, például elosztott rendszerekre, ahol a rendszer a teljes fürtnek, a végrehajtó ágensek pedig az egyes fürtbe kapcsolt számítógépeknek felelnek meg. \textcolor{red}{TODO} % TODO
+    Egy szoftverrendszer számára a holtpont nem szükségszerűen okoz hibás kimenetet, többnyire inkább a kimenet hiánya az elsődleges tünet, ami a működés lebénulását jelenti, anélkül, hogy a holtpontra jutott folyamat terminálna, ezáltal jelezve a hibát az esetleges felügyeleti rendszereknek.
+    
+    Egy rendszer holtpontmentességének bizonyítása pusztán tesztesetek ismételt futtatásával nem lehetséges. Mivel holtpontot okozhat időzítési probléma (\emph{versenyhelyzet}), gyakran előfordul, hogy fejlesztés közben -- például a hiányzó fordítási idejű optimalizációk miatt -- a probléma nem jelentkezik. Ugyanígy befolyásolhatja az egyes szálak ütemezését, és így a holtpont kialakulásának lehetőségét, egy (az éles környezettől különböző) tesztkörnyezet, a valóditól eltérő tesztadat, vagy pusztán mérési zaj. Ennek ellenére minden erőfeszítést meg kell tenni, hogy a lehetséges problémák még az üzemi környezetbe helyezés előtt kiderüljenek. Egy olyan környezetben, ahol nem áll rendelkezésünkre elegendő hibakeresési eszköz (pl.: \emph{debug szimbólumok}, kimerítő naplóbejegyzések) vagy maga a futó folyamat (csak \emph{post-mortem} vizsgálat lehetséges), ott bekövetkezett holtpont felderítése különösen nehéz.
+    
+    Adódik a kérdés, hogy hogyan védekezzünk a holtpontok ellen, hogyan elimináljuk a vizsgálat során a nemdeterminisztikusságból adódó bizonytalanságot, milyen technikák léteznek holtpontmentes rendszer kialakítására, valamint hogyan tegyük a rendszerünket ellenállóvá, ha holtpont előfordulhat. A következőkben tárgyalásra kerülnek különböző holtpont megelőzési (\ref{sec:dl-prevention}. szakasz) és holtpont elkerülési (\ref{sec:dl-avoiding}. szakasz) technikák, valamint a \ref{sec:dlhunter}. fejezet bemutat egy ezektől eltérő felderítési technikát alkalmazó eszközt.
 
 %----------------------------------------------------------------------------
-\section{Holtpontmegelőzés a gyakorlatban} Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
+\section{Holtpontmegelőzés a gyakorlatban  \textcolor{red}{TODO}} 
+\label{sec:dl-prevention}
+Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
+
+    Holtpont kialakulásának szükséges feltételei a következőek:
+    
+    \begin{description}
+    \item[Kölcsönös kizárás:] Egyes erőforrásokat egyszerre csak korlátozott számú ágens használhat. Példánkban egy evőeszközt egyszerre csak egy filozófus vehet kézbe.
+    \item[Foglalva várakozás:] Egy ágens várakozhat úgy erőforrásra, hogy közben más erőforrást már zárolt. Példánkban egy filozófus várakozhat evőeszközre, miközben már rendelkezik eggyel.
+    \item[Erőforráselvétel hiánya:] Egy ágens nem foszthat meg egy másikat erőforrásaitól. Példánkban a filozófusok nem vehetik ki egymás kezéből az evőeszközöket.
+    \end{description}
+    
+    \textcolor{red}{TODO} % TODO
+    % korkoros varakozas, mint feltetel?
+    % szukseges feltetelek, mind egyszerre kell
+    % egyiket elvesszuk, jo lesz -> melyik szakaszban targyaljuk? szakasz igazitasa e szerint
 %----------------------------------------------------------------------------
 
     \subsection{Hierarchikus zárolás} 
@@ -102,13 +122,15 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     További problémája a technikának, ha a lefoglalandó erőforrások egy részét csak futási időben ismerjük meg, egy másik zárolandó entitással történő interakció után. Ilyenkor csak nagyon körülményesen, vagy akár (csak futásidőben ismert számú erőforrás esetén) sehogyan sem tudjuk alkalmazni a megoldást.
     
-    Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítmény komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
+    Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítményt komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
     
-    \subsection{Lock-free adatstruktúrák} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
-    \subsection{Token alapú adathozzáférés} Shared data atomic pointere swappelődik a threadek között.
+    \subsection{Lock-free adatstruktúrák \textcolor{red}{TODO}} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
+    \subsection{Token alapú adathozzáférés \textcolor{red}{TODO}} Shared data atomic pointere swappelődik a threadek között.
 
 %----------------------------------------------------------------------------
-\section{Holtpontdetektálás a gyakorlatban} Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
+\section{Holtpontdetektálás a gyakorlatban \textcolor{red}{TODO}} 
+\label{sec:dl-avoiding}
+Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
 %----------------------------------------------------------------------------
-    \subsection{Tünetvizsgálat} CPU usage, progress monitorozása
-    \subsection{Intel® Parallel Studio XE 2013} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
+    \subsection{Tünetvizsgálat \textcolor{red}{TODO}} CPU usage, progress monitorozása
+    \subsection{Intel® Parallel Studio XE 2013 \textcolor{red}{TODO}} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
