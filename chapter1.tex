@@ -40,8 +40,74 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
 %   \eqref{eq:amdahl} fails to ref for some reason.
     Az $(1.2)$ egyenletbe $B = 0.05$ értéket helyettesítve $\lim\limits_{n \rightarrow \infty}{S(n)}$ értéke $20$-nak adódik, avagy ha programunknak csak $5\%$-a nem párhuzamosítható, hiába futtatjuk a fennmaradó részét akár végtelen sok feldolgozó egységgel rendelkező architektúrán, csupán hússzoros teljesítménynövekedést érhetünk el.
 
-    \subsection{Paralell rendszerek kommunikációja \textcolor{red}{TODO}} \label{sec:communication_of_parallel_systems} 
-        Többszálú, elosztott rendszerek. Locking, lock-free structures, token based shared data.
+    \subsection{Paralell rendszerek kommunikációja} 
+    \label{sec:communication_of_parallel_systems} 
+        
+    Egy elosztott, konkurens rendszerben szükség lehet az egyes ágensek között információcsere biztosítására. Például a korábban említett átlapolt esetben a beolvasást és feldolgozást végző ágensnek értesíteni kell az adatbázisműveleteket végzőt, hogy a következő szelet processzálása megtörtént, az kész az adatbáziba írásra. Ekkor az eredményközlést és a kérdéses adat átadását úgy kell megvalósítani, hogy a jelzési folyamat során egyik ágens se érzékelhessen inkonzisztens állapotot a rendszerben -- a változtatásokat atomi módon kell végrehajtani.
+        
+    Máskor több ágens írhatja és olvashatja ugyan azt a fájlt (vagy más erőforrást), ekkor meg kell oldani a kérések sorosítását, mivel valódi párhuzamos hozzáférés esetén a fájl tartalma korrumpálódhatna -- az ágensek kölcsönös kizárását kell biztosítani.
+        
+    % critical section
+    Ezek a problémák megoldhatóak akkor, ha biztosítható az ágensek számára a kritikus szakaszok egy időben kizárólagos végrehajtása, azaz egy adott szakaszban egyszerre csak egy ágens tartózkodhat. Kritikus szakasz elméleti vázlata a következő lehet: Minden szakasz jellemzője egy zár, amit az ágensek bezárhatnak, kinyithatnak és ellenőrizhetik az állapotát. Ekkor a kritikusz szakasz végrehajtása a következő:
+        
+    \begin{enumerate}
+        \item Az ágens ellenőrzi, hogy a zár nyitva van-e. Ha nem, vár, majd újra próbálkozik.
+        \item Ha nyitva találta a zárat, bezárja azt, ezzel jelezve belépését a kritikus szakaszba.
+        \item Végrehatja a védendő utasításokat.
+        \item Feloldja a zárat, ezzel kilépve a kritikus szakaszból, engedélyezve más ágensek számára a belépést.
+    \end{enumerate}
+%
+    A továbbiakban tekintsünk egy folyamatot, mint konkurens rendszert, amelyben az ütemezett szálak az ágensek. A következő megállapítások általánosíthatóak elosztott rendszerekre. A fenti lépéssorozat naív (és így hibás) implementációja a következő:
+    
+    \includecpp{criticalsec-wrong}{3}{23}
+        
+    A fenti megoldás hibája, hogy amennyiben a \texttt{startCritical} metódust végrehajtó szál a \texttt{while} ciklusból való kilépés után elveszti a futási jogát, egy másik szál vele párhuzamosan zárolhatja ugyan azt a zárat, így amikor az előbbi szál újra ütemezésre kerül, egyszerre többen tartózkodhatnak azonos kritikus szakaszban. Valódi párhuzamosságot támogató architektúrán a hibás működés az ütemezéstől függetlenül is előfordulhat, ennek esélyét pedig a különböző végrehajtási egységek dedikált gyorsítótára csak növeli. A probléma felmerülhet egészen egyszerű beágyazott rendszerek esetén is, ahol a végrehajtás szigorúan egy szálon történik és csak egy folyamat van ütemezve, mivel megszakítás (\emph{interrupt}) bármelyik pillanatban érkezhet, így előidézheti a fent leírt jelenséget. Egyes egyszerű példákban megoldás lehet a megszakítások teljes letiltása, az esetek többségében azonban robosztusabb megoldásra van szükség.
+    
+    A probléma érdekessége, hogy a megoldáshoz hardware oldali támogatás elengedhetetlen. Mivel a zár ellenőrzését és zárolását atomi módon kell megtenni, szükség van arra, hogy az architektúra utasításkészlete ezt egy atomi utasítás formájában megvalósítsa. Ilyen utasítás lehet a \texttt{TSL} (\emph{Test and Set Lock}) vagy a \texttt{CAS} (\emph{Compare And Exchange}). Előbbi az egyik operandusának értékét a másik operandus által mutatott helyre írja, miután a felülírandó értéket egy maghatározott helyre mentette. A viselkedés felhasználható tevékeny várakozás megvalósítására: a zárolást végrehajtó ágens addig próbálja a zárt állapotnak megfelelő értéket a zár által mutatott címre írni, amíg az előző állapot nyitottnak nem adódik -- ekkor biztos lehet benne, hogy a zár az ellenőrzés pillanatában nyitva volt és azonos pillanatban (utasításban) általa zárolásra került.
+    
+    % CAS
+    A \texttt{CAS} utasítás -- megvalósítástól függően -- összehasonlítja egyik operandusát egy regiszter értékével és azt egyezés esetén felülírja a másik operandussal. Amennyiben az összehasonlítás különbséget mutat, az első operandust érintetlenül hagyja és a sikertelenséget jelzi, például a \emph{zero flag} törlésével\footnote{http://courses.engr.illinois.edu/ECE390/archive/spr2002/books/labmanual/inst-ref-cmpxchg.html}. A megközelítés előnye, hogy versengés esetén nem történik memória írás, így elkerülhető a felesleges szinkronizáció. Napjaink konkurenciát támogató megoldásainak többsége a \texttt{CAS} utasításon alapul és minden jelentős platformon támogatott \cite{DiceEtAl}, a korábbi hibás konstrukciónak egy javított változata \texttt{CAS} használatával a következő lehet:
+    
+    \includecpp{criticalsec-cas}{6}{15}
+    
+    A \texttt{compare\_exchange\_weak} metódus első argumentumát hasonlítja össze az atomi objektum értékével, egyezés esetén azt a második paraméter értékével írja felül. Az összehasonlítás eredményét visszatérési értékével jelzi. Az atomi utasításokon alapulú konkurenciát támogató struktúrák az \ref{seq:lockfree} szakaszban kerülnek ismertetésre.
+    
+    A fenti, tevékeny várakozáson alapuló kritikus szakasz (\emph{spinlock}) megoldja a kölcsönös kizárás problémáját, de funkcionalitása nem teljes és teljesítménye sem minden esetben kielégítő. Egy zárral szemben támasztott funkcionális igény lehet az időkorláttal várakozás (\emph{timed wait}) vagy a védett erőforrás írásának és olvasásának a megkülönböztetése (\emph{read-write lock}). A tevékeny várakozás több teljesítményt is érintő problémát okoz:
+    
+    \begin{itemize} 
+        \item A várakozó szál feleslegesen sok CPU ciklust veszteget el, miközben a zár állapotát ellenőrzi gyors ismétlésekben. Egy rosszul megválasztott várakozási idő -- ami a felesleges utasítások számát csökkentené -- súlyosan degradálhatja a rendszer teljesítményét a lassú zár átadás miatt.
+        \item Nem biztosítható, hogy a magasabb prioritású szálak előbb hozzájutnak az igényelt erőforrásokhoz.
+        \item Egyes szálak -- akár véletlen folytán, különösen alacsony prioritás esetén -- éhezhetnek.
+        \item Prioritás öröklés hiányában prioritás inverzió alakulhat ki.
+    \end{itemize}
+%
+    Mivel a fenti problémák alkalmazás-szintű megoldása nagyon körülményes, a modern operációs rendszerek biztosítanak szinkronizációs primitíveket, amelyek kialakítása figyelembe veszi a fenti igényeket és kezeli az ütemezési problémákat. Ezek gyűjtőneve \emph{mutex}, a kölcsönös kizárás (\emph{mutual exclusion}) szavakból ferdítve. Ezen primitívek zárolásának vázlata a következő:
+    
+    \begin{enumerate}
+        \item A szál zárolni próbálja az adott mutexet, ezzel kiváltva egy rendszerhívást
+        \item Az operációs rendszer ellenőrzi a mutex állapotát
+        \item Amennyiben az szabad, zárolja azt a hívó fél számára, és visszatér
+        \item Amennyiben a mutex foglalt, a hívó szálat hozzáadja a mutex várakozási sorához és felfüggeszti a szál futását
+    \end{enumerate}
+%    
+    A felszabadítás vázlata:
+    
+    \begin{enumerate}
+        \item A szál elengedi az adott mutexet, ezzel kiváltva egy rendszerhívást
+        \item Az operációs rendszer -- a zár birtokosának ellenőrzése után -- felszabadítja azt
+        \item Az operációs rendszer felébreszti a várakozási sorban található szálak egy részhalmazát majd visszatér
+    \end{enumerate}
+%
+    A mutex várakozási listájának modellezése a teljesítményt érintő fontos kérdés. Ha egy egyszerű listát alkalmazunk, elkerüljük az éhezést, de konvoj hatás alakulhat ki -- a rendszer a leglassabb szál sebességével fog haladni, figyelmen kívül hagyva a prioritásokat. Ha prioritási sort alkalmazunk (pl.: kupac), pont fordított lesz a helyzet: érvényesül a szálak prioritása, de éhezés fenyegeti az alacsonyabb prioritású szálakat. Ebben a helyzetben a prioritások adaptív emelése segíthet.
+    
+    Hasonlóan fontos kérdés a várakozási sorban található szálak felébresztendő részhalmazának kiválasztása. Ha csak egy szálat ébreszt fel a rendszer, (más optimalizációk jelenléte mellett) megnövekszik a kontextusváltások száma az ellentétes esethez képest, amikor a rendszer minden várakozó szálat felébreszt. Ekkor a tomboló csorda (\emph{thundering herd}) probléma jelenthet problémát: egyszerre túl sok szál szeretne a felszabadult erőforráshoz hozzáférni, mivel ez nem sikerül, újra felfüggesztésre kerülnek, ezzel szaggatottá téve a rendszer működését (\emph{thrashing}). A választás megfelelő lehet akkor, ha várható, hogy a mutexet elsőként megszerző szál még a következő preempció előtt az fel is szabadítja, így elkerülve a többi szál újbóli felfüggesztését. Az optimális választás függvénye az ütemező egyéb jellemzőinek.
+    
+    % futex
+    A fenti vázlatszerű megoldásban minden művelet rendszerhívást igényelt. A Linux kernel \emph{futex} (\emph{Fast userspace mutex}) struktúrája elkerüli a rendszerhívások szükségességét, amennyiben nincsenek versenyző szálak. A megoldás alapja egy megosztott memóriaterületre helyezett \emph{futex}, amit bizonyos feltételek mellett az egyes folyamatok maguk zárolhatnak. A megosztott memóriának köszönhetően lehetőség nyílik nem csak szálak, hanem folyamatok szinkronizációjára is \cite{Futex}.
+    
+    % .net Monitor.Enter
+    Hasonló megoldást alkalmaz a Microsoft .NET Framework \emph{Monitor.Enter} metódusa. Amennyiben a monitort üresen találja, belépteti a szálat és zárolja azt, rendszerhívás nélkül, \texttt{CAS} utasítással. Ha zárva találta a monitort vagy nem sikerült a zárolás, először megpróbálkozik egy rövid tevékeny várakozással, elkerülve így a szál felfüggesztését. Ha az időzített \emph{spinning} is sikertelen, a szál a várakozási sorba kerül.\footnote{A működés a http://www.microsoft.com/en-us/download/details.aspx?id=4917 címről letölthető SSCLI 2.0 csomagban, a \texttt{clr/src/vm/syncblk.cpp} fájlban figyelhető meg, az \texttt{AwareLock::Enter} metódustól indulva}
+        
     \subsection{Rendszer holtpontja} 
       
     A következőkben tekinktsünk egy rendszerre, mint különböző feladatokat végrehajtó ágensek halmazára. Egy ágens eseményekre vár és bizonyos események hatására műveleteket végez, majd eseményeket vált ki. Ekkor egy rendszer valamely $H$ részhalmaza holtponton van akkor, ha $H$ minden eleme olyan eseményre vár, amit csak $H$ egy másik eleme tud kiváltani. Ha a rendszer bármely részhalmaza holtpontra jut, az adott rész működése leáll, gyakran magával vonva a teljes rendszer használhatatlanná válását. A fenti definícióra egy szemléletes példa a \cite{DiningPhilosophers} probléma, mely röviden a következő képpen vázolható: Egy terített asztal körül filozófusok ülnek. A teríték különlegessége, hogy mindegyikük között csak pontosan egy evőeszköz található, azonban az étkezés megkezdéséhez két evőeszközre van szükségük. Ekkor ha mindegyikük először a jobb oldali evőeszközt veszi kézbe, a bal oldali felvétele előtt várakozásra kényszerül, mivel az bal szomszédjának jobb oldali evőeszköze volt, tehát éppen használatban van. Így kölcsönös egymásra várás alakul ki, tehát az étkezőasztal, mint rendszer, holtpontra jut.
@@ -55,25 +121,30 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     Adódik a kérdés, hogy hogyan védekezzünk a holtpontok ellen, hogyan elimináljuk a vizsgálat során a nemdeterminisztikusságból adódó bizonytalanságot, milyen technikák léteznek holtpontmentes rendszer kialakítására, valamint hogyan tegyük a rendszerünket ellenállóvá, ha holtpont előfordulhat. A következőkben tárgyalásra kerülnek különböző holtpont megelőzési (\ref{sec:dl-prevention}. szakasz) és holtpont elkerülési (\ref{sec:dl-avoiding}. szakasz) technikák, valamint a \ref{sec:dlhunter}. fejezet bemutat egy ezektől eltérő felderítési technikát alkalmazó eszközt.
 
 %----------------------------------------------------------------------------
-\section{Holtpontmegelőzés a gyakorlatban  \textcolor{red}{TODO}} 
+\section{Holtpontmegelőzés a gyakorlatban} 
+%----------------------------------------------------------------------------
 \label{sec:dl-prevention}
-Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
-
-    Holtpont kialakulásának szükséges feltételei a következőek:
+%Néhány megelőzési technika bemutatása, hogy később világosan látszódjon, esetünkben miért nem használhattuk ezeket.
+    Egy rendszerben holtpont kialakulásának \emph{szükséges} feltételei többek között a következőek:
     
     \begin{description}
-    \item[Kölcsönös kizárás:] Egyes erőforrásokat egyszerre csak korlátozott számú ágens használhat. Példánkban egy evőeszközt egyszerre csak egy filozófus vehet kézbe.
-    \item[Foglalva várakozás:] Egy ágens várakozhat úgy erőforrásra, hogy közben más erőforrást már zárolt. Példánkban egy filozófus várakozhat evőeszközre, miközben már rendelkezik eggyel.
     \item[Erőforráselvétel hiánya:] Egy ágens nem foszthat meg egy másikat erőforrásaitól. Példánkban a filozófusok nem vehetik ki egymás kezéből az evőeszközöket.
+    \item[Kölcsönös egymásravárás:] Egy ágens várhat egy másikra úgy, hogy közben a másik fél (akár áttételesen) rá vár. Példánkban a holtpont bekövetkeztekor minden filozófus a tőle bal oldalira vár.
+    \item[Foglalva várakozás:] Egy ágens várakozhat úgy erőforrásra, hogy közben más erőforrást már zárolt. Példánkban egy filozófus várakozhat evőeszközre, miközben már rendelkezik eggyel.
+    \item[Kölcsönös kizárás:] Egyes erőforrásokat egyszerre csak korlátozott számú ágens használhat. Példánkban egy evőeszközt egyszerre csak egy filozófus vehet kézbe.
     \end{description}
+%    
+    Szükséges feltételek lévén, mindegyiknek egyszerre teljesülnie kell, hogy egy rendszerben felmerüljön a holtpont lehetősége. Holtpont megelőzésnek nevezzük azt, ha egy rendszer úgy kerül kivitelezésre, hogy valamely fenti feltétel semmiképpen sem állhasson fenn. Az ilyen megoldások megvalósítását többnyire tervezési időben el kell határozni, és a rendszerfejlesztés minden szintjén figyelembe kell venni.
     
-    \textcolor{red}{TODO} % TODO
-    % korkoros varakozas, mint feltetel?
-    % szukseges feltetelek, mind egyszerre kell
-    % egyiket elvesszuk, jo lesz -> melyik szakaszban targyaljuk? szakasz igazitasa e szerint
-%----------------------------------------------------------------------------
+    Egyes feltételek kizárása különösen sok erőfeszítést igényel. Az erőforráselvétel alapja, hogy az egyes ágenseket prioritizáljuk. Amikor egy ágens zárolna egy mutexet, amit egy alacsonyabb prioritású ágens tart éppen, akkor a zár a magasabb prioritású ágens tulajdonába kerül, az alacsonyabb prioritású pedig visszaáll abba a helyzetbe, amiben a zár megszerzése előtt volt, és várakozni kezd. A zár \emph{átigazolása} az egyszerűbb feladat, az állapotvisszaállítás ellenben komoly problémákat vet fel. Ha a megváltoztatott memóriaterületek nem kerülnek visszaállításra, a rendszer inkonzisztens állapotban maradhat. Ennek érdekében minden zárolás esetén pillanatképet kell készíteni, akár a teljes memóriáról, felkészülve egy esetleges visszaállításra. További problémákat vet fel a kimeneti/bemeneti műveletek visszaállítása, amelyeknek a hatása már kikerülhetett a rendszer hatásköre alól a visszaállítás igényének megjelenésekor, így ezeket késleltetni (kimenet esetén) vagy menteni (bemenet esetén) kell.
+    
+    Más feltételek megszüntetése valamivel kevesebb komplikációt ígérő technikákkal is megvalósítható. A kölcsönös egymásravárást az \ref{seq:hierarchical} szakasz, a foglalva várakozást az \ref{seq:onsestep} szakasz valamint a kölcsönös kizárást az \ref{seq:lockfree} szakasz tárgyalja.
+    % TODO token based message passing?
+    % TODO szakaszok igazitasa e szerint
+
 
     \subsection{Hierarchikus zárolás} 
+    \label{seq:hierarchical}
     A holtpont definíciót megvizsgálva láthatjuk, hogy holtpont akkor fordulhat elő, ha az egyik végrehajtó egység lefoglalt egy erőforráshalmazt, majd ezután egy másikat szeretne kisajátítani, miközben azt már egy másik végrehajtó egység lefoglalta, ami az előbbi halmaz egy elemére vár. Ez megegyezik azzal az esettel, ha a szálak a kérdéses erőforrások halmazának bármely két elemét \emph{különböző sorrendben} zárolnák. A felismerés alapján adódik a hierarchikus zárolás technikájának ötlete: Definiáljunk az erőforrások halmazán egy teljes rendezést. A szálak csak a definiált sorrend szerint növekvő sorrendben zárolhatják az egyes entitásokat, a holtpont kialakulását elkerülendő. 
     
     Ha sikerül a két feltételt betartani, biztosak lehetünk abban, hogy a vizsgált erőforrásokat használó szálak között nem fog holtpont kialakulni. Az entitások rendezéséhez célszerű lenne, ha mindegyikhez egy számértéket rendelnénk, ami alapján egyértelműen adódna a sorrend. Ha a memóriacímet használjuk erre a célra, matematikai értelemben megfelelő rendezést kapunk, azonban ez a sorrend fordításról fordításra (különböző architektúrákon, operációs rendszereken, eltérő fordító kapcsolók esetén vagy pusztán a kód megváltoztatása miatt), valamint futtatásról futtatásra változhat (ASLR\footnote{http://en.wikipedia.org/wiki/Address\_space\_layout\_randomization}-t használó futtatókörnyezet esetén vagy ha a memória nincs virtualizálva). A memóriacím változó jellege miatt nagyon körülményes visszakozó megoldásokat kell alkalmazni az erőforrások zárolása során, melyek erőforráspazarlóak (a sorozatos visszalépések és újrapróbálkozások miatt) vagy nagyon bonyolult struktúrákhoz vezetnek (előre meg kell határozni az erőforrások lefoglalásának sorrendjét és ehez igazítani a műveletek sorrendjét is) melyek rendszerint nem is alkalmazhatóak és karbantartásuk nagyon költséges.
@@ -93,6 +164,7 @@ Néhány megelőzési technika bemutatása, hogy később világosan látszódjo
     A hierarchikus zárolás technika alkalmazása olyan feladatokban, ahol az adatfolyam iránya egyértelmű, sikerrel használható, de különös körültekintést és alapos tervezést igényel, ellenben a fent bemutatott példának a futásidejű többletterhelése nem szignifikáns. Ezzel szemben már létező, karbantartandó, a technikát nem alkalmazó problémás alkalmazások ilyen módú kijavítása ritkán vezet eredményre és komoy erőfeszítést igényel. Olyan feladatok esetén, ahol az egyes komponensek kommunikációjának iránya nem egyértelmű, a technika nem alkalmazható jelentős teljesítménybeli degradáció nélkül.
     
     \subsection{Egylépéses zárolás}
+    \label{seq:onsestep}
     
     A holtpont megelőzhető úgy, ha minden szál a szükséges erőforrásokat egy lépésben foglalja le. Ennek menete a következő: A szál meghatározza a zárolandó entitásokat, majd sorban megpróbálja őket lefoglalni. Amennyiben valamelyik erőforrás foglalt, az összes többit elengedi, majd várakozni kezd a foglalt entitásra. A C++11 \texttt{std::lock()} metódusa is ezt a működést valósítja meg \cite{C++11/lock}:
     
@@ -124,7 +196,10 @@ Néhány megelőzési technika bemutatása, hogy később világosan látszódjo
     
     Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítményt komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
     
-    \subsection{Lock-free adatstruktúrák \textcolor{red}{TODO}} AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni.
+    \subsection{Lock-free adatstruktúrák \textcolor{red}{TODO}}
+    \label{seq:lockfree}
+     AFAIK aktív kutatási terület, akár egy fél doktorit is lehetne ide írni. ABA
+     % http://msdn.microsoft.com/en-us/library/system.collections.concurrent.aspx
     \subsection{Token alapú adathozzáférés \textcolor{red}{TODO}} Shared data atomic pointere swappelődik a threadek között.
 
 %----------------------------------------------------------------------------
@@ -132,5 +207,11 @@ Néhány megelőzési technika bemutatása, hogy később világosan látszódjo
 \label{sec:dl-avoiding}
 Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
 %----------------------------------------------------------------------------
+    \subsection{Zárak nyilvántartása} DB rendszerek holtpont detektorai
     \subsection{Tünetvizsgálat \textcolor{red}{TODO}} CPU usage, progress monitorozása
     \subsection{Intel® Parallel Studio XE 2013 \textcolor{red}{TODO}} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
+    
+%----------------------------------------------------------------------------
+\section{Összegzés \textcolor{red}{TODO}} 
+Fentiek előnye hátránya, mikor használható/mikor nem, amikor nem, akkor mi? -> chapter 2.
+%----------------------------------------------------------------------------
