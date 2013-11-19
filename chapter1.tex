@@ -138,10 +138,7 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     Egyes feltételek kizárása különösen sok erőfeszítést igényel. Az erőforráselvétel alapja, hogy az egyes ágenseket prioritizáljuk. Amikor egy ágens zárolna egy mutexet, amit egy alacsonyabb prioritású ágens tart éppen, akkor a zár a magasabb prioritású ágens tulajdonába kerül, az alacsonyabb prioritású pedig visszaáll abba a helyzetbe, amiben a zár megszerzése előtt volt, és várakozni kezd. A zár \emph{átigazolása} az egyszerűbb feladat, az állapotvisszaállítás ellenben komoly problémákat vet fel. Ha a megváltoztatott memóriaterületek nem kerülnek visszaállításra, a rendszer inkonzisztens állapotban maradhat. Ennek érdekében minden zárolás esetén pillanatképet kell készíteni, akár a teljes memóriáról, felkészülve egy esetleges visszaállításra. További problémákat vet fel a kimeneti/bemeneti műveletek visszaállítása, amelyeknek a hatása már kikerülhetett a rendszer hatásköre alól a visszaállítás igényének megjelenésekor, így ezeket késleltetni (kimenet esetén) vagy menteni (bemenet esetén) kell.
     
-    Más feltételek megszüntetése valamivel kevesebb komplikációt ígérő technikákkal is megvalósítható. A kölcsönös egymásravárást az \ref{seq:hierarchical} szakasz, a foglalva várakozást az \ref{seq:onsestep} szakasz valamint a kölcsönös kizárást az \ref{seq:lockfree} szakasz tárgyalja.
-    % TODO token based message passing?
-    % TODO szakaszok igazitasa e szerint
-
+    Más feltételek megszüntetése valamivel kevesebb komplikációt ígérő technikákkal is megvalósítható. A kölcsönös egymásravárás elkerüléséről az \ref{seq:hierarchical} szakasz, a foglalva várakozás tiltásáról az \ref{seq:onsestep} szakasz valamint a kölcsönös kizárás megszüntetéséről az \ref{seq:lockfree} szakasz értekezik. A megosztott adathozzáférés elkerülésének lehetőségeivel az \ref{seq:messagepassing} szakasz foglalkozik.
 
     \subsection{Hierarchikus zárolás} 
     \label{seq:hierarchical}
@@ -219,8 +216,39 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     Láthattuk, hogy bizonyos speciális esetekben (mint a fenti körkörös puffer), megfelelő konkurencia szint és terhelés mellett praktikus megoldások készíthetőek zárak használata nélkül is. Azonban nem minden problémára jó megoldás a zármentes megközelítés -- egyes esetekben jóval lassabb lehet zárakat használó megfelelőjénél, más helyzetekben pedig nem is realizálható. A zár- és várakozás-mentes algoritmusok és adatstruktúrák aktív kutatási területek, a tranzakcionális memória fejlődésével párhuzamosan újabb megoldások megjelenésére lehet számítani.
     
-    \subsection{Token alapú adathozzáférés \textcolor{red}{TODO}} Shared data atomic pointere swappelődik a threadek között.
-
+    \subsection{Token alapú adathozzáférés} 
+    \label{seq:messagepassing}
+    % Shared data unqie pointere swappelődik a threadek között.
+    
+    Egyes helyzetekben szükség lehet arra, hogy nemcsak a zárak alkalmazását, hanem a közös, megosztott adat írását is tiltsuk a rendszerben. Ennek stabilitási, biztonsági okai lehetnek. Ekkor az adathozzáférés engedélyezése vagy lehetősége egy azonosító (\emph{token}) birtoklásától függhet. Amikor egy végrehajtó egység létrehoz egy megosztásra (továbbadásra) alkalmas entitást, megszerez egy azonosítót, ami ezt az entitást reprezentálja. Ezután csak az azonosítón keresztül képes hozzáférni az entitáshoz, a végrehajtandó művelettől függetlenül. Valódi megosztás ebben a modelben nincs, ha a birtokos szeretné engedélyezni más végrehajtóegység számára a hozzáférést, az azonosítót továbbadja, a fogadó fél lesz az új birtokos, eredeti tulajdonosa elveszti jogait az entitás felett.
+    
+    C++ környezetben a fent vázolt működés közelíthető \texttt{std::unique\_ptr} használatával.
+    
+    \includecpp{unique-ptr}{1}{28}
+%
+    % Működés
+    A \texttt{Task} struktúra egy elvégzendő feladatot szimbolizál, ami rendelkezik valamilyen védendő adattal (\texttt{data}) és egy \texttt{execute} metódussal, mely meghívásával a reprezentált feladat végrehajtható. A \texttt{main} függvény a dinamikus memóriában létrehoz egy ilyen struktúrát, a kapott mutatót (\emph{pointer}) egy megfelelő \texttt{std::unique\_ptr}-ben tárolja. Ezután elindít egy feladat feldolgozó szálat, amelynek átadja az imént létrehozott feladatot, kihasználva a C++11-ben megjelenő \emph{move szemantikát}. Miután az átadás megtörtént, a \texttt{std::unique\_ptr} üres marad, többé nincs lehetőség rajta keresztül hozzáférni a \texttt{Task} példányhoz. Eközben az újonnan induló szál lefuttatja a \texttt{taskProcessor} függvényt, mely átveszi a feladatra mutató \texttt{std::unique\_ptr}-t. Ezen keresztül elérhető a korábban létrehozott feladat, amit a függvény az \texttt{execute} metódus meghívásával végre is hajt. A feladat által elfoglalt memóriaterület felszabadításáról a \texttt{std::unique\_ptr} gondoskodik, a \texttt{taskProcessor} visszatérésekor.
+    
+    % TBB
+    Az üzenetváltás ebben a formában nem különösen hatékony, mivel minden egyes létrehozott feladatot egy új szálnak kell átadni, amely létrehozása költséges és ami megszűnik a feladat végrehajtása után. A szálak újrahasznosítása érdekében érdemes szálkészlet (\emph{thread pool}) használata, ahova az egyes szálak a feladat végrehajtása után visszatérnek, hogy később újra ütemezhetőek legyenek, elkerülve a létrehozásukkal és megszüntetésükkel kapcsolatos extra terhelést. Egy kiváló ütemező és szálkészlet implementációt tartalmaz az Intel® Threading Building Blocks\footnote{https://threadingbuildingblocks.org/} könyvtár.
+    
+    A fenti példa csupán az üzenetküldés szemantikájának szemléltetését szolgálja. A megközelítés csak akkor működik, ha az üzenetküldés résztvevői nem férnek hozzá direkt a \texttt{std::unique\_ptr} tartalmához, azt nem mentik el és nem hasznosítják újra. Az egyes szálak továbbra is elérik a folyamat teljes címterét, így a védendő adat szerencsétlen esetben felülíródhat, vagy versenyhelyzet alakulhat ki.
+    
+    % ADA, Erlang, QNX
+    Más rendszerek megvalósítanak valódi üzenetküldést. Erlang környezetben lehetőség van olyan folyamatok létrehozására, melyek egy -- a futtatókörnyezet által biztosított -- csatornából veszik ki a nekik címzett üzeneteket. Mivel az Erlang által biztosított \emph{változók} nem módosíthatóak (\emph{inmutable}), versenyhelyzet veszélye nem áll fenn. A következő Erlang nyelvű mintaprogram egy egyszerű üzenetküldési modellt mutat be:
+    
+    \medskip    
+    \lstset{
+        basicstyle=\footnotesize\ttfamily
+    }    
+        \lstinputlisting[language=erlang]{sources/messaging.erl}
+    \medskip
+    
+    A megoldás előnye, hogy a létrehozott \texttt{TaskProcessor} folyamat a feladat végrehajtása után folytatja az üzenetsor feldolgozását, csak explicit felszólításra (\texttt{quit} üzenet) lép ki. A folyamatok ütemezéséről a futtatókörnyezet gondoskodik. A bemutatotthoz hasonlító üzenetküldési rendszert használ többek között az erőművek és más misszió-kritikus rendszerek vezérlésére certifikált Ada\footnote{https://en.wikipedia.org/wiki/Ada\_\%28programming\_language\%29} programozási platform, és a valósidejű alkalmazásokat kiszolgáló QNX\footnote{https://en.wikipedia.org/wiki/QNX} operációs rendszer is. Ezek esetében a szinkron üzenetküldés során a küldő fél addig blokkolódik, amíg a rendszer az üzenetet a fogadó fél memóriaterületére nem másolta, valamint a fogadó fél hasonló módon blokkolható, üzenetre várakozva. Elképzelhető aszinkron üzenetküldés is, például InfiniBand\footnote{https://en.wikipedia.org/wiki/InfiniBand} kommunikációs technológia használata esetén. Ekkor az RDMA-t (\emph{Remote Direct Memory Access}) támogató hardware eszköz másolja az adatokat a két fél memóriája között, viszont az érintett memórialapok kilapozásának megakadályozásáról gondoskodni kell. Ezen technológiák esetén a terminológia az üzenet (\emph{message}), üzenetküldés (\emph{message passing}) és csatorna (\emph{channel}) tekintetében megegyezik.
+    
+    % értékelés biztonságos, de nem párhuzamos
+    A fentiek alapján megállapítható, hogy az üzenetküldés egy -- biztonságosság tekintetében -- nagyon hasznos technika, azonban teljesítményét tekintve nem kiemelkedő. Még ha el is kerüljük az adatok mozgatását vagy másolását a memóriában, a modell szemlélete akadályoz abban, hogy egyszerre több végrehajtó egység dolgozzon azonos adaton, így a konkurencia elérhető szintje csökken. Bár elsőre úgy tűnik, hogy az üzenetküldés nem használ zárakat, a blokkoló utasítások a felszín alatt akár ugyan azokat a szinkronizációs primitíveket alkalmazhatják. A kommunikáció irányának helytelen megválasztása így holtponthoz vezet, például ha két folyamat egymásnak akar üzenetet küldeni; ekkor mindkettő a másik fogadására fog várni.
+    
 %----------------------------------------------------------------------------
 \section{Holtpontdetektálás a gyakorlatban \textcolor{red}{TODO}} 
 \label{sec:dl-avoiding}
