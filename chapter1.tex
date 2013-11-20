@@ -250,13 +250,42 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     A fentiek alapján megállapítható, hogy az üzenetküldés egy -- biztonságosság tekintetében -- nagyon hasznos technika, azonban teljesítményét tekintve nem kiemelkedő. Még ha el is kerüljük az adatok mozgatását vagy másolását a memóriában, a modell szemlélete akadályoz abban, hogy egyszerre több végrehajtó egység dolgozzon azonos adaton, így a konkurencia elérhető szintje csökken. Bár elsőre úgy tűnik, hogy az üzenetküldés nem használ zárakat, a blokkoló utasítások a felszín alatt akár ugyan azokat a szinkronizációs primitíveket alkalmazhatják. A kommunikáció irányának helytelen megválasztása így holtponthoz vezet, például ha két folyamat egymásnak akar üzenetet küldeni; ekkor mindkettő a másik fogadására fog várni.
     
 %----------------------------------------------------------------------------
-\section{Holtpontdetektálás a gyakorlatban \textcolor{red}{TODO}} 
+\section{Holtpontdetektálás a gyakorlatban} 
 \label{sec:dl-avoiding}
-Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
+%Ha megelőzni nem tudtuk, hogyan gyomláljuk ki
 %----------------------------------------------------------------------------
-    \subsection{Zárak nyilvántartása \textcolor{red}{TODO}} DB rendszerek holtpont detektorai
+
+Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biztosítani, máskor pedig nem biztosított az anyagi jellegű ráfordítás, hogy a ritkán előforduló holtpontokat a rendszer karbantartói eltávolítsák. Előbbi jellemző egy programozható rendszer esetében, például egy operációs rendszer vagy egy adatbáziskezelő fejlesztésekor, ahol erőforrásokat más programok számára kell biztosítani, így az egymásra várás egy másik -- a rendszer feletti -- rétegben alakul ki (folyamatok vagy tranzakciók szintjén). Utóbbi helyzetre példa egy olyan nagyméretű kódbázis, melynek eredeti szerzői már nem elérhetőek, megfelelő átszervezéséhez pedig hiányzik a karbantartói csapat kompetenciája vagy időkerete -- üzemeltetése viszont feltétlenül szükséges.
+
+    Ekkor célszerű a rendszerben holtpontdetektálási technikákat alkalmazni. A működés folytonossága érdekében monitorozni kell az erőforrásokat és felhasználóikat, holtpont után kutatva, vagy valamilyen heurisztikával segítve kell eszkalálni a problémát gyanús helyzetben. A következő két szakasz egy-egy ilyen technikát tárgyal.
+
+    \subsection{Erőforrások monitorozása} 
+    %DB rendszerek holtpont detektorai
+    Egy adatbáziskezelő rendszer ki van szolgáltatva felhasználóinak. Mivel egyszerre több független program kapcsolódhat és hajthat végre tranzakciókat, könnyen előfordulhat, hogy egyes táblákat rossz ütemben, ellenkező sorrendben zárolnak. Ha az adatbáziskezelő nincs felkészülve ilyen helyzetekre, felhasználói holtpontra kerülnek és önerőből sem kommitálni, sem abortálni nem tudnak majd. Egy lehetséges megoldás az erőforrások és tranzakciók kapcsolatainak reprezentálása egy $G(V, E)$ függőségi gráffal, ahol $v \in V$  pontosan akkor, ha $v$ egy erőforrás vagy egy futó tranzakció és $\overrightarrow{(i, j)} \in E$ akkor, ha $i$ egy tranzakció ami $j$ erőforrást zárolva tartja vagy ha $i$ egy erőforrás, amire $j$ tranzakció vár. Ekkor egy $j_0$ erőforrás zárolása az azt igénylő $i_0$ tranzakció számára a következő képpen történik:
+    
+    \begin{enumerate}
+        \item Ha $\overrightarrow{(i_0, j_0)} \in E$, a tranzakció már birtokolja az erőforrást, a procedúra visszatér.
+        
+        \item Ha $|\{k | \overrightarrow{(k, j_0)}\}| = 0$, vagyis ha az erőforrás még szabad, legyen $E := E \, \cup \,\overrightarrow{(i_0, j_0)}$, ezzel jelezve a zárolást. A zár regisztrálását követően a procedúra visszatér.
+        
+        \item Ha az erőforrás foglalt volt, legyen $E := E \, \cup \, \overrightarrow{(j_0, i_0)}$ majd tekintsük a $j_0$ csúcsból indított mélységi keresést, mely sikeres, ha a bejárás során újra visszaérkezik $j_0$ csúcsba. Ha a keresés sikertelen, nincs egymásra várakozás, $i_0$ biztonságosan várakozhat, a procedúra visszatér. Ellenben ha a keresés sikeres, az erőforrás biztosítása a rendszert holtpontra juttatná. A procedúra abortálja $i_0$ tranzakciót ($V := V \setminus \{i_0\}$), majd felszabadítja zárolt erőforrásait és visszavonja legutóbbi zárolási igényét ($E := E \setminus \{\overrightarrow{(a, b)} | a = i_0 \vee b = i_0\}$).
+    \end{enumerate}
+%
+    Könnyen belátható, hogyha az erőforrás allokáció a fenti lépéseket követi, nem alakulhat ki egymásra várakozás. (Egy ilyen helyzet egy kört feltételezne a gráfban, kör eleme azonban nem lehet levél elem, így a második lépésben az él további vizsgálat nélkül hozzáadható a függőségi gráfhoz, a harmadik lépés explicit módon ellenőrzi a kör előfordulását, a kiinduló gráf körmentes (üres), más módon pedig nem keletkezik irányított él.) A harmadik lépés esetében az adatbáziskezelő mérlegelheti, hogy melyik tranzakciót abortálja; figyelembe kell venni a tranzakciók prioritását, az abortálással és visszaforgatással (\emph{rollback}) járó költségeket, törekedni kell az éhezés elkerülésére.
+    
+    A procedúra könnyen kiterjeszthető megoszthaó (például olvasható és írható) erőforrásokra. Az egyes függőségeket reprezentáló éleket meg kell jelölni a zárolás jellege szerint, és a második lépésben nem kell figyelembe venni az olvasási függőségeket, amennyiben a létrehozandó zárolás is olvasási jellegű.
+    
+    A modell jól alkalmazható akkor, ha a zárolások frekvenciája lehetővé teszi a keresések végrehajtását az igényelt teljesítményszint fenntartása mellett. Amennyiben az erőforrások száma és a rezervációk gyakorisága nagy, a megoldás implementálása mérlegelendő. Egy operációs rendszer esetében például egy folyamat zárainak nyilvántartása feleslegesen lassítaná a működést, a szálak helyes konkurens viselkedéséről a programozónak kell gondoskodnia saját hatáskörén belül. Ezzel szemben ez nem feltételezhető egy adatbáziskezelő rendszer esetében, ahol az egyes erőforrásokhoz különböző kliensek is hozzáférhetnek.
+    
     \subsection{Tünetvizsgálat \textcolor{red}{TODO}} CPU usage, progress monitorozása
-    \subsection{Intel® Parallel Studio XE 2013 \textcolor{red}{TODO}} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
+    
+    % konkurencia foka
+    % megvalósítás kezdete
+    % megbízhatóság
+    % beavatkozás mértéke
+    
+    %\subsection{Intel® Parallel Studio XE 2013 \textcolor{red}{TODO}} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
+    % Ezt mozgatni chapter 2 elejere
     
 %----------------------------------------------------------------------------
 \section{Összegzés \textcolor{red}{TODO}} 
