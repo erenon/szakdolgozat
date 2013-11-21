@@ -193,14 +193,14 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     Az egylépéses zárolás megfelelő lehet kisebb alkalmazások holtpontmentességének biztosítására, nagyobb rendszerek esetén azonban a teljesítményt komoly mértékben negatívan befolyásoló jellege miatt nem megfelelő eszköz.
     
-    \subsection{Lock-free adatstruktúrák}
+    \subsection{Zármentes adatstruktúrák}
     \label{seq:lockfree}
      %lockfree, waitfree. jelentőség (real time). memory ordering, spsc queue, ABA
      % http://msdn.microsoft.com/en-us/library/system.collections.concurrent.aspx
      
     A korábban tárgyalt megoldások mindegyike az erőforrás zárolás egy speciális módját használta arra, hogy a kölcsönös kizárás megvalósítása mellett holtpontmentes konkurens működést biztosítson. A zárak használatának egy hátránya, hogy kommunikációt tesz szükségessé az operációs rendszerrel (rendszerhívás), mely kommunikáció mértéke optimista stratégiával csökkenthető, de nem elkerülhető. A másik felmerülő probléma, hogy a zárra várakozás blokkolja a végrehajtó egységet, azt az operációs rendszer felfüggesztheti, a felfüggesztés hosszának ideje pedig nem garantáltan korlátos. Az indeterminisztikus várakozás alkalmatlanná teszi a zárakat valós idejű rendszerek számára.
     
-    Helyes konkurens működés megvalósítható blokkoló zárak és várakozások nélkül is. Egy algoritmust zár mentesnek (\emph{lock-free}) nevezünk, ha a rendszerszintű haladás garantált, és várakozás mentesnek (\emph{wait-free}) akkor, ha a végrehajtó egységenként tekintett haladás is garantált. Minden várakozás mentes algoritmus egyben zármentes is. Az ilyen jellemzőket mutató technikák kiemelt szerepet játszanak valós idejű rendszerekben. Általánosságban elmondható, hogy az ilyen algoritmusok használatának is ára van; a kifejlesztésük és helyességüknek bizonyítása, valamint karbantartásuk jóval költségesebb feladat, mint egy azonos funkciójú, zárakkal operáló változatnak. Továbbá a haladás garantálása extra utasításokat igényel, így egy zármentes megvalósítás lassabb lehet hagyományos párjánál alacson konkurenciájú helyzetekben.
+    Helyes konkurens működés megvalósítható blokkoló zárak és várakozások nélkül is. Egy algoritmust zármentesnek (\emph{lock-free}) nevezünk, ha a rendszerszintű haladás garantált, és várakozás mentesnek (\emph{wait-free}) akkor, ha a végrehajtó egységenként tekintett haladás is garantált. Minden várakozás mentes algoritmus egyben zármentes is. Az ilyen jellemzőket mutató technikák kiemelt szerepet játszanak valós idejű rendszerekben. Általánosságban elmondható, hogy az ilyen algoritmusok használatának is ára van; a kifejlesztésük és helyességüknek bizonyítása, valamint karbantartásuk jóval költségesebb feladat, mint egy azonos funkciójú, zárakkal operáló változatnak. Továbbá a haladás garantálása extra utasításokat igényel, így egy zármentes megvalósítás lassabb lehet hagyományos párjánál alacson konkurenciájú helyzetekben.
     
     C++ környezetben zármentes adatstruktúrákon konkurens végrehajtó ágensek szinkronizációját -- lehetőleg hardware által támogatott -- atomi műveleteken és a hozzájuk kapcsolt memóriarendezési (\emph{memory ordering}) szabályokon keresztül lehet biztosítani. Az egyes műveletek \emph{interthread} relációja, a szinkronizáció pontos karakterisztikája a függvényhívások paramétereivel szabályozható. A következőkben tett állítások feltételezik, hogy mindig az alapértelmezett, \texttt{memory\_order\_seq\_cst} van használatban. Más beállításokkal egyes architektúrákon hatékonyabb működés érhető el, azonban a helyesség bizonyítása még nehezebbé válik. A továbbiakban a szinkronizációról tett állítások pusztán a megértést szolgálják, nem nyújtanak teljeskörű tájékoztatást és egyes fogalmakat leegyszerűsítenek a szabványhoz képest. Az egyes memóriarendezési technikákról és a pontos terminológiáról bővebb iránymutatást a \cite{ConcurrencyInAction} vagy a \cite{C++11/MemoryModel} ad. A szinkronizáció alapja a \emph{sequenced before} és az atomi műveletek közötti implicit \emph{synchronized with} reláció. Egy A művelet \emph{sequenced before} relációban van egy B művelettel, ha egy szekvenciális kódban előtte áll. Egy B atomi művelet \emph{synchronized with} relációban van A atomi művelettel, ha egy azonos memóriaterületet A ír és B olvas. Ezen relációk tranzitívak, így az atomi műveletek felhasználhatóak arra, hogy velük \emph{sequenced before} relációban álló memóriaműveletek befejeződését jelezzük. Ha a memória modell nem tenne ilyen kikötéseket, előfordulhatna, hogy a fordító által alkalmazott utasítás-átrendezés, a processzor soron kívüli utasításvégrehajtása vagy egy aggresszív gyorsítótár miatt a jelzésként használt változó módosítását egy másik szál (végrehajtó ágens) idő előtt érzékelje.
     
@@ -257,7 +257,7 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
 
 Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biztosítani, máskor pedig nem biztosított az anyagi jellegű ráfordítás, hogy a ritkán előforduló holtpontokat a rendszer karbantartói eltávolítsák. Előbbi jellemző egy programozható rendszer esetében, például egy operációs rendszer vagy egy adatbáziskezelő fejlesztésekor, ahol erőforrásokat más programok számára kell biztosítani, így az egymásra várás egy másik -- a rendszer feletti -- rétegben alakul ki (folyamatok vagy tranzakciók szintjén). Utóbbi helyzetre példa egy olyan nagyméretű kódbázis, melynek eredeti szerzői már nem elérhetőek, megfelelő átszervezéséhez pedig hiányzik a karbantartói csapat kompetenciája vagy időkerete -- üzemeltetése viszont feltétlenül szükséges.
 
-    Ekkor célszerű a rendszerben holtpontdetektálási technikákat alkalmazni. A működés folytonossága érdekében monitorozni kell az erőforrásokat és felhasználóikat, holtpont után kutatva, vagy valamilyen heurisztikával segítve kell eszkalálni a problémát gyanús helyzetben. A következő két szakasz egy-egy ilyen technikát tárgyal.
+    Ekkor célszerű a rendszerben holtpontdetektálási technikákat alkalmazni. Ezen technikák megoldást nyújtanak arra az esetre, amikor nem lehetséges az alkalmazás holtpontmentesítése, így a bekövetkező holtpontokat valamilyen módon -- az alkalmazás kontextusához képest -- kívülről kell megszüntetni. A működés folytonossága érdekében monitorozni kell az erőforrásokat és felhasználóikat, holtpont után kutatva, vagy valamilyen heurisztikával segítve kell eszkalálni a problémát gyanús helyzetben. A következő két szakasz egy-egy ilyen technikát tárgyal.
 
     \subsection{Erőforrások monitorozása} 
     %DB rendszerek holtpont detektorai
@@ -277,17 +277,56 @@ Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biz
     
     A modell jól alkalmazható akkor, ha a zárolások frekvenciája lehetővé teszi a keresések végrehajtását az igényelt teljesítményszint fenntartása mellett. Amennyiben az erőforrások száma és a rezervációk gyakorisága nagy, a megoldás implementálása mérlegelendő. Egy operációs rendszer esetében például egy folyamat zárainak nyilvántartása feleslegesen lassítaná a működést, a szálak helyes konkurens viselkedéséről a programozónak kell gondoskodnia saját hatáskörén belül. Ezzel szemben ez nem feltételezhető egy adatbáziskezelő rendszer esetében, ahol az egyes erőforrásokhoz különböző kliensek is hozzáférhetnek.
     
-    \subsection{Tünetvizsgálat \textcolor{red}{TODO}} CPU usage, progress monitorozása
+    \subsection{Felügyelet} 
+    % CPU usage, progress monitorozása
+    Amennyiben nincs lehetőség az alkalmazás módosítására, és a futtatókörnyezet sem változtatható, átmeneti megoldás lehet egy monitorozó rendszer felállítása. A monitorozó rendszer feladata előre definiált metrikák mentén vizsgálni a futó alkalmazást, az egyes mérőszámok kritikus értéke esetén pedig előre meghatározott eljárás végrehajtása. Az alkalmazható metrikák és eljárások nagyban függenek a felügyelendő rendszer jellemzőitől.
     
-    % konkurencia foka
-    % megvalósítás kezdete
-    % megbízhatóság
-    % beavatkozás mértéke
+    Egy holtpontra jutott alkalmazás jellemzője, hogy az egymásra várás következtében az egyes szálak nem végeznek semmilyen műveletet, fel vannak függesztve. Ekkor az alkalmazás processzor használata hosszú időn keresztül a vártnál alacsonyabb lesz, amit egy monitorozó rendszer könnyen felismerhet. A megoldás nem alkalmazható akkor, ha ilyen üres várakozási szakaszok az üzemszerű működés során is előfordulhatnak. Például egy webszerver esetében várható, hogy az alacsony forgalmú időszakokban az egyes szálak passzívan várakoznak a bejövő kérésekre, más számítást nem végeznek. Ekkor a processzorterhelést figyelő metrika fals pozitív jelzést adhat.
+    
+    Monitorozhatóak az alkalmazás által okozott mellékhatás jellegű műveletek is. Az előző esetben problémát jelentő szerver funkciójú, kéréseket kiszolgáló alkalmazás esetében amennyiben készül napló bejegyzés a kérés beérkezésekor és a válasz elküldésekor, a bejegyzések összepárosításával a felügyeleti rendszer pontos képet kaphat a rendszer válaszidejéről. A szokatlanul hosszú várakozások jó indikátorai egy végtelen várakozásnak. Az erőforráshasználat és mellékhatás analízis módszerek kombinálhatóak, hatékonyságuk így növelhető.
+    
+    A kritikus helyzetben végrehajtandó eljárás is mérlegelés kérdése. Egyes helyzetekben megengedhető az alkalmazás állapotának elvesztése és egy rövid kiesés, ekkor az a felügyeleti rendszer által terminálandó majd újraindítandó. Az újraindítás sikerességét mindenképpen ellenőrizni kell, sikertelenség esetén a probléma eszkalálandó. A terminálás előtt célszerű lehet egy pillanatkép készítése a memóriáról (\emph{coredump, minidump}), így az üzemeltető később meggyőződhet a monitorozó rendszer döntésének helyességéről és szükség esetén finomíthatja konfigurációját. Más esetekben nem elfogadható, hogy automatizmusok rendelkeznek más alkalmazások futási joga felett, ekkor a felügyeleti dolgozók riasztása célszerű. Ilyen jellegű riasztások frekvenciáját megfelelően alacsony szinten kell tartani, a túlzott üzenetáradat sorsa gyakran a figyelmen kívül hagyás hosszú távon.
+    
+    A megoldás előnye az egyszerű kivitelezhetőség, a felügyeleti rendszerek terjedésével egy ilyen egyszerű metrika beállítása gyorsan és megbízhatóan elvégezhető, az alkalmazás módosítása nélkül. A megoldás megbízhatósága azonban aggályos, a heurisztika jó beállítása nehéz feladat, így ezt csupán átmeneti megoldásként érdemes megfontolni, hosszú távon a veszteségek meghaladhatják az alkalmazás valódi kijavításának költségeit.
     
     %\subsection{Intel® Parallel Studio XE 2013 \textcolor{red}{TODO}} http://software.intel.com/en-us/intel-parallel-inspector Sajnos nincs trial, nem világos, hogy pontosan mit csinál a háttérben
     % Ezt mozgatni chapter 2 elejere
     
 %----------------------------------------------------------------------------
 \section{Összegzés \textcolor{red}{TODO}} 
-Fentiek előnye hátránya, mikor használható/mikor nem, amikor nem, akkor mi? -> chapter 2.
+%Fentiek előnye hátránya, mikor használható/mikor nem, amikor nem, akkor mi? -> chapter 2.
 %----------------------------------------------------------------------------
+
+\begin{center}
+  \begin{tabular}{| l | c | c | c | c |}
+    \hline
+    Megoldás neve & Teljesítmény  & Megvalósítás  & Alkalmaz- & Megbíz- \\
+                  &               & kezdete       & hatóság   & hatóság \\
+    \hline
+    \hline
+    Hierarchikus zárolás & Magas & Tervezés & Univerzális & Megbízható \\ \hline
+    Egylépéses zárolás & Mérsékelt & Fejlesztés & Korlátozott & Megbízható \\ \hline
+    Zármentes adatstruktúrák & Magas & Fejlesztés & Korlátozott & Megbízható \\ \hline
+    Token alapú hozzáférés & Alacsony & Tervezés & Univerzális & Megbízható \\ \hline
+    Erőforrások monitorozása & Magas & Üzemeltetés & Korlátozott & Megbízható \\ \hline
+    Felügyelet & Magas & Üzemeltetés & Korlátozott & Heurisztika \\ \hline
+    
+  \end{tabular}
+\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
