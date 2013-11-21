@@ -293,40 +293,35 @@ Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biz
     % Ezt mozgatni chapter 2 elejere
     
 %----------------------------------------------------------------------------
-\section{Összegzés \textcolor{red}{TODO}} 
+\section{Összegzés} 
 %Fentiek előnye hátránya, mikor használható/mikor nem, amikor nem, akkor mi? -> chapter 2.
 %----------------------------------------------------------------------------
 
-\begin{center}
-  \begin{tabular}{| l | c | c | c | c |}
-    \hline
-    Megoldás neve & Teljesítmény  & Megvalósítás  & Alkalmaz- & Megbíz- \\
-                  &               & kezdete       & hatóság   & hatóság \\
-    \hline
-    \hline
-    Hierarchikus zárolás & Magas & Tervezés & Univerzális & Megbízható \\ \hline
-    Egylépéses zárolás & Mérsékelt & Fejlesztés & Korlátozott & Megbízható \\ \hline
-    Zármentes adatstruktúrák & Magas & Fejlesztés & Korlátozott & Megbízható \\ \hline
-    Token alapú hozzáférés & Alacsony & Tervezés & Univerzális & Megbízható \\ \hline
-    Erőforrások monitorozása & Magas & Üzemeltetés & Korlátozott & Megbízható \\ \hline
-    Felügyelet & Magas & Üzemeltetés & Korlátozott & Heurisztika \\ \hline
-    
-  \end{tabular}
-\end{center}
+Az \ref{sec:dl-prevention} és az \ref{sec:dl-avoiding} szakasz számos technikát tárgyalt; mindegyik megoldás célja a fejlesztett vagy felügyelt rendszer holtpontmentesítése. A cél közös, az alkalmazhatóság és az eredmények azonban sok tekintetben elétrőek. Az \ref{tab:comparison}-es táblázat összefoglalja az egyes eszközök előnyeit és hátrányait néhány fontosnak ítélt szempont szerint.
 
+\begin{table}
+\renewcommand{\arraystretch}{1.5}
+    \begin{center}
+      \begin{tabular}{| l | c | c | c | c |}
+        \hline
+        Megoldás neve & Teljesítmény  & Megvalósítás  & Alkalmaz- & Megbíz- \\
+                      &               & kezdete       & hatóság   & hatóság \\
+        \hline
+        \hline
+        Hierarchikus zárolás & Magas & Tervezés & Univerzális & Megbízható \\ \hline
+        Egylépéses zárolás & Mérsékelt & Fejlesztés & Korlátozott & Megbízható \\ \hline
+        Zármentes adatstruktúrák & Magas & Fejlesztés & Korlátozott & Megbízható \\ \hline
+        Token alapú hozzáférés & Alacsony & Tervezés & Univerzális & Megbízható \\ \hline
+        Erőforrások monitorozása & Mérsékelt & Üzemeltetés & Korlátozott & Megbízható \\ \hline
+        Felügyelet & Magas & Üzemeltetés & Korlátozott & Heurisztika \\ \hline
+        
+      \end{tabular}
+    \end{center}
+\caption{Holtpont-megelőzési és -elkerülési technikák összehasonlítása}
+\label{tab:comparison}
+\end{table}
 
+A \emph{Teljesítmény} oszlop azt jelzi, hogy az egyes megoldások implementálása mennyiben befolyásolja az alkalmazás sebességét; az áteresztő képességet (\emph{throughput}) valamint a késleltetést (\emph{latency}) és a konkurencia fokát. A lehetséges értékek sorrendje legjobbtól a legrosszabb felé haladva: Magas, Mérsékelt, Alacsony. A \emph{Megvalósítás kezdete} oszlopból kiolvasható, hogy az egyes technikák -- amennyiben kiválasztásra kerülnek -- mikor érintik legkorábban az alkalmazásfejlesztést. Itt a tervezési fázis a legkorábbi időszak, ekkor a technika alkalmazása befolyásolja az alkalmazandó architektúrát. A fejlesztési szakaszban megvalósítható megoldások implementációs döntés eredményeként kerülhetnek a rendszerbe legkésőbb. Az üzemeltetés eszközei az alkalmazás fejlesztésétől függetlenül felhasználhatóak. Az \emph{Alkalmazhatóság} oszlop két csoportra bontja a versenyzőket: Univerzális az a technika, ami az alkalmazási területtől független és többnyire képes mindegyik architektúrával együtt működni, korlátozottként jelölt az a megoldás, amely használata feltételeket támaszt a rendszer szervezésével szemben. Megbízhatóság alatt értendő az, hogy milyen valószínűséggel tisztítja meg a technika alkalmazása a fejlesztett rendszert a holtpontoktól. Megbízható az a megoldás, ami matematikailag bizonyíthatóan holtpontmentessé alakítja az érintett részeket, ellenkező esetben a megoldás heurisztika.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+Az egyes technikákat tárgyaló szakaszok részletesen tárgyalják az előnyöket és a felmerülő problémákat. A táblázat alapján elmondható, hogy nincs olyan megoldás, ami minden szempont szerint ideális. Amennyiben egy létező, nagy áteresztőképességgel rendelkező alkalmazás megbízható holtpontmentesítése a cél, csak a zármentes adatstruktúrák alkalmazása az egyetlen lehetséges technika, ami minden kezdeti feltételt teljesít. Ennek alkalmazhatósága azonban erősen korlátozott, valószínűtlen, hogy egy teljes rendszert érdemes erre a koncepcióra építeni, emellett a tökéletesen különböző szemlélet elsajátítása és rendszerbe integrálása és tesztelése komoly költségeket jelent. A \ref{sec:dlhunter}. fejezet bemutat egy megoldást, mely ilyen szélsőséges helyzetekben is alkalmazható.
 
