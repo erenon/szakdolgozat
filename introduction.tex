@@ -1,6 +1,12 @@
 %----------------------------------------------------------------------------
-\chapter*{Bevezető \textcolor{red}{TODO}}\addcontentsline{toc}{chapter}{Bevezető \textcolor{red}{TODO}}
+\chapter*{Bevezető}
+\addcontentsline{toc}{chapter}{Bevezető}
 %----------------------------------------------------------------------------
 
-Mik azok a paralell rendszerek, miért fontosak (manapság), milyen problémák merülnek fel, ezekre eddig milyen válaszok érkeztek. A felmerülő témák közül mivel foglalkozik a dolgozat, egyes fejezetek mit járnak körbe.
+% Mik azok a paralell rendszerek, miért fontosak (manapság), milyen problémák merülnek fel, ezekre eddig milyen válaszok érkeztek. A felmerülő témák közül mivel foglalkozik a dolgozat, egyes fejezetek mit járnak körbe.
 
+Napjainkban már a középkategóriás okostelefonok is gyakran négymagos processzort tartalmaznak. A korábban csak a szuperszámítógépek luxusának tekintett konkurens architektúrák már a mindennapok szerves részét képezik. A több végrehajtó egységgel rendelkező platformok erőforrásait csak a jól skálázódó többszálú programok képesek megfelelően kihasználni. A párhuzamos szemlélet elsajátítása nem egyszerű, a megváltozott eszköz architektúra új algoritmusokat és szoftver architektúrákat igényel. Az új megoldások új típusú problémákat okoznak, melyek közül a stabilitás és megbízhatóság szempontjából különösen veszélyesek a nehezen reprodukálható és felderíthető versenyhelyzetek (\emph{race condition}) és holtpontok (\emph{deadlock}).
+
+A dolgozat első fejezete egy elméleti áttekintést nyújt a paralell rendszerekről, a konkurens megoldások bevezetésétől várható tejlesítménynövekedésről, a modern operációs rendszereken elérhető szinkronizációs primitívekről, azoknak hardveres hátteréről és a gyakran alkalmazott optimalizációkról. A fejezet ezután a holtpont jelenség tárgyalását követően 6 technikát mutat be, melyek alkalmazásával különböző kompromisszumok mellett a holtpont elkerülhető. Az egyes megoldások összegzése részletezi az alkalmazhatóság korlátait, a várható előnyöket és hátrányokat. Az összefoglaló rámutat arra, hogy létezik elvárások olyan halmaza, melyet a bemutatott holtpont-megelőzési és -elkerülési technikák nem képesek kielégíteni.
+
+A második fejezet bemutat egy olyan szoftvert, mely képes az előzőleg megoldatlan kérdéseket megválaszolni. A dinamikus kódanalízisen alapuló elemző lehetővé teszi egy rendszerben megtalálható holtpont lehetőségek felderítését és előrejelezését, nem téve szükségessé a holtpont bekövetkezését. A részletesen tárgyalt optimalizációknak köszönhetően lehetővé válik nagy áteresztő képességű (\emph{high throughput}) alkalmazások hatékony elemzése. A fejezet végül betekintést nyújt a fejlesztési tervekbe is.
