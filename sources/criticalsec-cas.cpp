@@ -10,9 +10,7 @@ void startCritical(Lock& lock) {
     while (!lock.compare_exchange_weak(unlocked, true));
 }
 
-void stopCritical(Lock& lock) {
-    lock.store(false);
-}
+void stopCritical(Lock& lock) { lock.store(false); }
 
 int main() {
     Lock lock(false);

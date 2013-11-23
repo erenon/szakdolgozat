@@ -68,7 +68,7 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     % CAS
     A \texttt{CAS} utasítás -- megvalósítástól függően -- összehasonlítja egyik operandusát egy regiszter értékével és azt egyezés esetén felülírja a másik operandussal. Amennyiben az összehasonlítás különbséget mutat, az első operandust érintetlenül hagyja és a sikertelenséget jelzi, például a \emph{zero flag} törlésével\footnote{http://courses.engr.illinois.edu/ECE390/archive/spr2002/books/labmanual/inst-ref-cmpxchg.html}. A megközelítés előnye, hogy versengés esetén nem történik memória írás, így elkerülhető a felesleges szinkronizáció. Napjaink konkurenciát támogató megoldásainak többsége a \texttt{CAS} utasításon alapul és minden jelentős platformon támogatott \cite{DiceEtAl}, a korábbi hibás konstrukciónak egy javított változata \texttt{CAS} használatával a következő lehet:
     
-    \includecpp{criticalsec-cas}{6}{15}
+    \includecpp{criticalsec-cas}{6}{13}
     
     A \texttt{compare\_exchange\_weak} metódus első argumentumát hasonlítja össze az atomi objektum értékével, egyezés esetén azt a második paraméter értékével írja felül. Az összehasonlítás eredményét visszatérési értékével jelzi. Az atomi utasításokon alapuló konkurenciát támogató struktúrák az \ref{seq:lockfree} szakaszban kerülnek ismertetésre.
     
@@ -107,6 +107,8 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     % .net Monitor.Enter
     Hasonló megoldást alkalmaz a Microsoft .NET Framework \emph{Monitor.Enter} metódusa. Amennyiben a monitort üresen találja, belépteti a szálat és zárolja azt, rendszerhívás nélkül, \texttt{CAS} utasítással. Ha zárva találta a monitort vagy nem sikerült a zárolás, először megpróbálkozik egy rövid tevékeny várakozással, elkerülve így a szál felfüggesztését. Ha az időzített \emph{spinning} is sikertelen, a szál a várakozási sorba kerül.\footnote{A működés a http://www.microsoft.com/en-us/download/details.aspx?id=4917 címről letölthető SSCLI 2.0 csomagban, a \texttt{clr/src/vm/syncblk.cpp} fájlban figyelhető meg, az \texttt{AwareLock::Enter} metódustól indulva}
+    
+    \vfill
         
     \subsection{Rendszer holtpontja} 
       
@@ -216,6 +218,8 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     
     Láthattuk, hogy bizonyos speciális esetekben (mint a fenti körkörös puffer), megfelelő konkurencia szint és terhelés mellett praktikus megoldások készíthetőek zárak használata nélkül is. Azonban nem minden problémára jó megoldás a zármentes megközelítés -- egyes esetekben jóval lassabb lehet zárakat használó megfelelőjénél, más helyzetekben pedig nem is realizálható. A zár- és várakozás-mentes algoritmusok és adatstruktúrák aktív kutatási területek, a tranzakcionális memória fejlődésével párhuzamosan újabb megoldások megjelenésére lehet számítani.
     
+    \vfill
+    
     \subsection{Token alapú adathozzáférés} 
     \label{seq:messagepassing}
     % Shared data unqie pointere swappelődik a threadek között.
@@ -244,7 +248,7 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
         \lstinputlisting[language=erlang]{sources/messaging.erl}
     \medskip
     
-    A megoldás előnye, hogy a létrehozott \texttt{TaskProcessor} folyamat a feladat végrehajtása után folytatja az üzenetsor feldolgozását, csak explicit felszólításra (\texttt{quit} üzenet) lép ki. A folyamatok ütemezéséről a futtatókörnyezet gondoskodik. A bemutatotthoz hasonlító üzenetküldési rendszert használ többek között az erőművek és más misszió-kritikus rendszerek vezérlésére certifikált Ada\footnote{https://en.wikipedia.org/wiki/Ada\_\%28programming\_language\%29} programozási platform, és a valósidejű alkalmazásokat kiszolgáló QNX\footnote{https://en.wikipedia.org/wiki/QNX} operációs rendszer is. Ezek esetében a szinkron üzenetküldés során a küldő fél addig blokkolódik, amíg a rendszer az üzenetet a fogadó fél memóriaterületére nem másolta, valamint a fogadó fél hasonló módon blokkolható, üzenetre várakozva. Elképzelhető aszinkron üzenetküldés is, például InfiniBand\footnote{https://en.wikipedia.org/wiki/InfiniBand} kommunikációs technológia használata esetén. Ekkor az RDMA-t (\emph{Remote Direct Memory Access}) támogató hardware eszköz másolja az adatokat a két fél memóriája között, viszont az érintett memórialapok kilapozásának megakadályozásáról gondoskodni kell. Ezen technológiák esetén a terminológia az üzenet (\emph{message}), üzenetküldés (\emph{message passing}) és csatorna (\emph{channel}) tekintetében megegyezik.
+    A megoldás előnye, hogy a létrehozott \texttt{TaskProcessor} folyamat a feladat végrehajtása után folytatja az üzenetsor feldolgozását, csak explicit felszólításra (\texttt{quit} üzenet) lép ki. A folyamatok ütemezéséről a futtatókörnyezet gondoskodik. A bemutatotthoz hasonlító üzenetküldési rendszert használ többek között az erőművek és más misszió-kritikus rendszerek vezérlésére certifikált Ada\footnote{https://en.wikipedia.org/wiki/Ada\_(programming\_language)} programozási platform, és a valósidejű alkalmazásokat kiszolgáló QNX\footnote{https://en.wikipedia.org/wiki/QNX} operációs rendszer is. Ezek esetében a szinkron üzenetküldés során a küldő fél addig blokkolódik, amíg a rendszer az üzenetet a fogadó fél memóriaterületére nem másolta, valamint a fogadó fél hasonló módon blokkolható, üzenetre várakozva. Elképzelhető aszinkron üzenetküldés is, például InfiniBand\footnote{https://en.wikipedia.org/wiki/InfiniBand} kommunikációs technológia használata esetén. Ekkor az RDMA-t (\emph{Remote Direct Memory Access}) támogató hardware eszköz másolja az adatokat a két fél memóriája között, viszont az érintett memórialapok kilapozásának megakadályozásáról gondoskodni kell. Ezen technológiák esetén a terminológia az üzenet (\emph{message}), üzenetküldés (\emph{message passing}) és csatorna (\emph{channel}) tekintetében megegyezik.
     
     % értékelés biztonságos, de nem párhuzamos
     A fentiek alapján megállapítható, hogy az üzenetküldés egy -- biztonságosság tekintetében -- nagyon hasznos technika, azonban teljesítményét tekintve nem kiemelkedő. Még ha el is kerüljük az adatok mozgatását vagy másolását a memóriában, a modell szemlélete akadályoz abban, hogy egyszerre több végrehajtó egység dolgozzon azonos adaton, így a konkurencia elérhető szintje csökken. Bár elsőre úgy tűnik, hogy az üzenetküldés nem használ zárakat, a blokkoló utasítások a felszín alatt akár ugyan azokat a szinkronizációs primitíveket alkalmazhatják. A kommunikáció irányának helytelen megválasztása így holtponthoz vezet, például ha két folyamat egymásnak akar üzenetet küldeni; ekkor mindkettő a másik fogadására fog várni.
@@ -288,6 +292,8 @@ Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biz
     A kritikus helyzetben végrehajtandó eljárás is mérlegelés kérdése. Egyes helyzetekben megengedhető az alkalmazás állapotának elvesztése és egy rövid kiesés, ekkor az a felügyeleti rendszer által terminálandó majd újraindítandó. Az újraindítás sikerességét mindenképpen ellenőrizni kell, sikertelenség esetén a probléma eszkalálandó. A terminálás előtt célszerű lehet egy pillanatkép készítése a memóriáról (\emph{coredump, minidump}), így az üzemeltető később meggyőződhet a monitorozó rendszer döntésének helyességéről és szükség esetén finomíthatja konfigurációját. Más esetekben nem elfogadható, hogy automatizmusok rendelkeznek más alkalmazások futási joga felett, ekkor a felügyeleti dolgozók riasztása célszerű. Ilyen jellegű riasztások frekvenciáját megfelelően alacsony szinten kell tartani, a túlzott üzenetáradat sorsa gyakran a figyelmen kívül hagyás hosszú távon.
     
     A megoldás előnye az egyszerű kivitelezhetőség, a felügyeleti rendszerek terjedésével egy ilyen egyszerű metrika beállítása gyorsan és megbízhatóan elvégezhető, az alkalmazás módosítása nélkül. A megoldás megbízhatósága azonban aggályos, a heurisztika jó beállítása nehéz feladat, így ezt csupán átmeneti megoldásként érdemes megfontolni, hosszú távon a veszteségek meghaladhatják az alkalmazás valódi kijavításának költségeit.
+  
+  \vfill
     
 %----------------------------------------------------------------------------
 \section{Összegzés} 
@@ -296,7 +302,7 @@ Egyes rendszerek esetében nem lehet tervezési időben holtpontmentességet biz
 
 Az \ref{sec:dl-prevention} és az \ref{sec:dl-avoiding} szakasz számos technikát tárgyalt; mindegyik megoldás célja a fejlesztett vagy felügyelt rendszer holtpontmentesítése. A cél közös, az alkalmazhatóság és az eredmények azonban sok tekintetben elétrőek. Az \ref{tab:comparison}-es táblázat összefoglalja az egyes eszközök előnyeit és hátrányait néhány fontosnak ítélt szempont szerint.
 
-\begin{table}
+\begin{table}[h!]
 \renewcommand{\arraystretch}{1.5}
     \begin{center}
       \begin{tabular}{| l | c | c | c | c |}

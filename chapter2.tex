@@ -19,7 +19,7 @@
     
     Mivel a tervezés idejében sem a GCC AST (\emph{Abstract Syntax Tree}) plugin rendszere, sem a Clang Static Analyzere nem állt azon a szinten, hogy megfelelően támogatni tudjon egy átfogó elemzést, dinamikus kódanalízis mellett döntöttem. A dinamikus módszer szükségessé teszi a mért alkalmazás módosítását és átfogóbb tesztelést igényel, viszont a megvalósítása nagyságrendekkel egyszerűbb.
     
-    A mérés formai szempontból három fázisra tagolódik: adatgyűjtés, a gyűjtött adat értelmezése és feldolgozása, eredmények megjelenítése. A következőkben formalizálom ezen fázisokat anélkül, hogy kitérnék architekturális vagy implementációs részletekre.
+    A mérés formai szempontból három fázisra tagolódik: adatgyűjtés, a gyűjtött adat értelmezése és feldolgozása, eredmények megjelenítése. A következő szakaszok ezen fázisokat formalizmusát taglalják, implementációs részletek érintése nélkül.
     
     \subsection{Adatgyűjtés}
     Mivel az alkalmazásban kialakuló zárolási sorrendek felvételére van szükség, elég, ha a futás során regisztráljuk az egyes zárak egymásutániságát. A holtpontok felderítését komolyan megnehezíti, hogy azok előfordulása gyakran egy versenyhelyzet kimenetelének függvénye, a nemdeterminisztikus viselkedés nagyon megnyújtja a reprodukálásra fordítandó időt valamint nagyon körülményes arról ismételt futtatásokkal megbizonyosodni, hogy a rendszer garantáltan holtpontmentes.
