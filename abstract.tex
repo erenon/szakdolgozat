@@ -1,16 +1,22 @@
 %----------------------------------------------------------------------------
 % Abstract in hungarian
 %----------------------------------------------------------------------------
-\chapter*{Kivonat \textcolor{red}{TODO}}\addcontentsline{toc}{chapter}{Kivonat \textcolor{red}{TODO}}
+\chapter*{Kivonat}
+\addcontentsline{toc}{chapter}{Kivonat}
 
-Kivonat %TODO
+A konkurens végrehajásra képes rendszerek terjedése felgyorsította a párhuzamosságot támogató szoftver architektúrák és algoritmusok fejlődését. A parallel rendszerek tervezése komoly kihívást jelent, a hibásan kialakított vagy implementált alkalmazások karbantartása költséges és megterhelő feladat az üzemeltető számára. A dolgozat az előforduló problémák jellegének részletes tárgyalása mellett számos technikát ismertet, melyekkel ezek elkerülhetőek. Az ismertetett technikák kihasználják a \cite{C++11} szabvány számos újdonságát; a konkurenciát támogató szinkronizációs primitíveket, a tranzakcionális memóriát kihasználó atomi memória objektumokat és a \emph{move} szemantikát.
+
+A második fejezet bemutat egy dinamikus kódanalízisen alapuló alkalmazást, mely hatékonyan képes előre jelezni egy rendszer holtpontjait, olyan kritikus helyzetekben is megoldást nyújtva, ahol más megoldások implementálása nagyon költséges lenne, az átalakítással járó fejlesztési erőfeszítések vagy a teljesítményromlás miatt.
 \vfill
 
 %----------------------------------------------------------------------------
 % Abstract in english
 %----------------------------------------------------------------------------
-\chapter*{Abstract \textcolor{red}{TODO}}\addcontentsline{toc}{chapter}{Abstract \textcolor{red}{TODO}}
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
 
-Abstract %TODO
-\vfill
+The widespread of multicore processor architectures facilitate and speeds up the development of concurrent software architectures and algorithms. Being a rather tough challenge the design of such systems, failure to design or implement a concurrent application often implies serious maintenance costs later. This thesis describes the common pitfalls like race condition and deadlock and enumerates several solution which counteract and prevent them. The solutions make use of the brand new and highly anticipated features of the \cite{C++11} standard, like the synchronization primitives supporting concurrency, the atomic memory objects and methods which exposes the interesting capabilities of transactional memory and the move semantics.
+
+The second chapter introduces an analyzer tool based on dynamic code analysis which is able to predict the deadlocks of a system. This tool successfully provides diagnostics even in cases where the other standard solutions would require excess refactoring or would cause significant performance degradation.
+\vfill 
 
