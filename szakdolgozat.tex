@@ -18,7 +18,7 @@
 \usepackage{sectsty}
 \usepackage{setspace}  % Ettol a tablazatok, abrak, labjegyzetek maradnak 1-es sorkozzel!
 \usepackage[hang]{caption}
-\usepackage{hyperref}
+\usepackage[unicode]{hyperref}
 
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -61,8 +61,8 @@
 %	Setup hyperref package
 %--------------------------------------------------------------------------------------
 \hypersetup{
-    bookmarks=true,            % show bookmarks bar?
-    unicode=false,             % non-Latin characters in Acrobats bookmarks
+%    bookmarks=true,            % show bookmarks bar?
+%    unicode=false,             % non-Latin characters in Acrobats bookmarks
     pdftitle={\vikcim},        % title
     pdfauthor={\vikszerzo},    % author
     pdfsubject={\vikdoktipus}, % subject of the document
@@ -153,13 +153,19 @@ aboveskip=10pt}
 \include{project}
 
 \pagenumbering{arabic}
-
 \onehalfspacing
+
+\hypersetup{pageanchor=false}
+
+
 \include{titlepage}
-\pagestyle{empty}
+
 \tableofcontents\vfill
 \addtocontents{toc}{\protect\thispagestyle{empty}}
+\thispagestyle{empty}
 \cleardoublepage
+
+\hypersetup{pageanchor=true}
 
 \pagestyle{plain}
 \include{declaration}
@@ -172,6 +178,7 @@ aboveskip=10pt}
 %\listoftables\addcontentsline{toc}{chapter}{Táblázatok jegyzéke}
 
 \bibliography{mybib}
+\cleardoublepage\phantomsection
 \addcontentsline{toc}{chapter}{Irodalomjegyzék}
 \bibliographystyle{abstract}
 
