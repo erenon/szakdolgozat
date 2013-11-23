@@ -4,38 +4,37 @@
 %----------------------------------------------------------------------------
 
     \section{Motiváció}
-    %TODO
-    A befogadó csapatom feladata egy komplex -- tőzsdei kereskedelemhez köthető -- meglehetősen sokrétű alkalmazásstack egy szeletének fejlesztése, karbantartása, integrációja és supportálása. A legnagyobb komponens egy C++ nyelven írt szerveroldali alkalmazás -- továbbiakban \emph{GlobalContractor} -- mely egy MIMO rendszerrel modellezhető: Sok forrásból gyűjt adatokat melyeket transzformáció után több előfizető felé publikál. A multi input-multi output modell real time működésének biztosítása érdekében az alkalmazás folyamatosan több -- egymástól különböző feladatú, de azonos adathalmazon dolgozó -- szálat alkalmaz.
+    A Morgan Stanley Magyarország Elemző Kft széles profiljának jelentős eleme az anyacég pénzügyi tevékenységének informatikai és matematikai támogatása. Számos nagyteljesítményű alkalmazást fejleszt és üzemeltet, melyek feladata a kereskedelem során generálódó adatok feldolgozása és értelmezése. Ezen rendszerek egyike egy -- tőzsdei kereskedelemhez köthető -- meglehetősen sokrétű alkalmazás hálózat, melynek fejlesztésével, karbantartásával és integrációjával foglalkoztam. A legnagyobb komponens egy C++ nyelven írt szerveroldali alkalmazás -- továbbiakban \emph{GlobalContractor} -- mely egy MIMO rendszerrel modellezhető: Sok forrásból gyűjt adatokat melyeket transzformáció után több előfizető felé publikál. A multi input-multi output modell hatákony skálázódásának biztosítása érdekében az alkalmazás folyamatosan több -- egymástól különböző feladatú, de azonos adathalmazon dolgozó -- szálat alkalmaz.
     
-    Sajnálatos módon a többszálú szervezés magával von néhány kellemetlen problémát, így többször előfordult, hogy egy új komponens bevezetésekor a futás -- semmiféleképpen sem determinisztikus módon -- holtpontra jutott. A holtpont megjelenése természetesen production környezetre koncentrálódott, így az ott előforduló problémák további tesztelői órák feláldozását követelték.
+    Sajnálatos módon a többszálú szervezés magával von néhány kellemetlen problémát, így többször előfordult, hogy egy új komponens bevezetésekor az alkalmazás -- semmiféleképpen sem determinisztikus módon -- holtpontra jutott. A holtpont megjelenése az éles környezetben futó nagyteljesítményű szerverek esetén volt jellemző, a hibák felderítését a kereskedelmi adatok bizalmasságára vonatkozó szabályok tovább nehezítették.
     
-    Egy olyan megoldásra volt szükség, ami a holtpont jellegű problémákat teljes egészében megszünteti vagy megszüntethetővé teszi, valamit bizonyosságot ad arra, hogy a vizsgált applikáció holtpontmentes -- amennyiben valójában az.
-    
-    \section{Lehetséges megoldások vizsgálata} Az elméleti részben taglalt megoldások hogyan gondolhatóak tovább vagy miért nem jók, miért van szükség saját fejlesztésre.%TODO
+    Egy olyan megoldásra volt szükség, ami a holtpont jellegű problémákat teljes egészében megszünteti vagy megszüntethetővé teszi, valamit bizonyosságot ad arra, hogy a vizsgált rendszer holtpontmentes -- amennyiben valójában az. Emellett követelmény volt, hogy az alkalmazás konkurens skálázódási jellemzői ne degradálódjanak, valamint a megoldás alkalmazása ne igényelje a teljes rendszer átszervezését.
     
     \section{Megoldás}
-    A célok definiálása után teljesen szabad kezet kaptam a megoldás megtervezésére és implementálására. A probléma általánosítása a következő: "Egy létező rendszerben kell holtpontokat megelőzni vagy elkerülni". A szakirodalom számos lehetőséget kíván ennek az általánosított problémának a megoldására, úgymint "Tervezzük a rendszert holtpontmentesre" vagy "Biztosítsuk az erőszakos erőforráselvételt" valamint "Erőforrásokat csak előre definiált sorrendben zároljunk".
+    A fentiek alapján látható, hogy az igények pontosan azt a halmazt alkotják, amit az első fejezet megoldásai nem tudnak kielégíteni. Azok a technikák, amiket a tervezés elejétől kezdve kell alkalmazni, teljes újraírást igényelnének, így nem használhatóak. A mérsékelt vagy alacsony teljesítménymutatóval jellemzett megoldások használhatatlanul lassúvá tennék a teljes alkalmazást. Az adott architektúra jellegéből fakadóan pedig a zármentes adatstruktúrák nem alkalmazhatóak hatékonyan. A korábban bemutatott megoldások nem hibásak vagy alacsonyabb rendűek; az igények túlzóak, ebben a formában nem tarthatóak, más megközelítést tesznek szükségessé.
     
-    Mivel a konkrét cél egy létező alkalmazás kijavítása volt, tervezési idejű megoldások nem jöhettek szóba. A natív zárak által védett módosítható struktúrák preemtív hozzáférések biztosítása egy olyan feladatnak tűnt, ami túlzottan sok módosítást igényel a javítandó programban, továbbá ütemező feladatokat lát el, ami blokkolást, szükségképpen zárakat igényel, így a helyzetünkön nem segít.
+    Ezt belátva relaxáljuk a feltételeket. Ha bármely fenti szempontból engednénk, az alkalmazás minősége romlana. Ebben a követelménycsapdában született meg egy olyan eszköz ötlete, mely csupán analízist végez, a rendszert magát változatlanul hagyja. A szükségletek azonosítása után megvizsgáltam, hogy nem létezik-e a piacon már elérhető, hasonló funkciójú megoldás. Egyedül az Intel® Parallel Studio XE 2013\footnote{http://software.intel.com/en-us/intel-parallel-inspector} eszközt találtam, mely állítja magáról, hogy holtpontanalízist képes végezni. A program hátránya meglehetősen borsos árán túl, hogy kizárólag Microsoft Visual Studio C Compilert és Intel C Compilert támogat, Gnu C Compilert nem, így alkalmatlan a konkrét esetben történő felhasználásra.
     
-    Az alternatívák mérlegelése után a következő tervezői döntést hoztam: Az elkészítendő alkalmazás hajtson végre egy mérést a javítandó alkalmazáson, és a mérés eredménye képpen készítsen egy jelentést, amely részletezi a megtalált holtpontokat (ill. holtpont lehetőségeket) és segíti a karbantartó programozót a hibát okozó metódusok lokalizálásában. A holtponttal fenyegető szituációk azonosításának alapja a dinamikusan definiált zárolási sorrend megsértése. A megközelítés előnye, hogy a mérés definiálható úgy, hogy az később tetszőleges alkalmazást ki tudjon szolgálni, valamint nem, vagy csak kis mértékben igényli a mért alkalmazás módosításáát. Hátránya, hogy csak diagnosztizál, a holtponthelyzetek tényleges kiküszöbölése emberi beavatkozást igényel. A módosítás helyének megbecsülésében a mérőeszköz segíti a programozót.
+    Az alternatívák mérlegelése után a következő tervezői döntést hoztam: Az elkészítendő eszköz hajtson végre egy mérést a javítandó alkalmazáson, a mérési eredmény legyen egy jelentés, amely részletezi a megtalált holtpontokat (ill. holtpont lehetőségeket) és segíti a karbantartó programozót a hibát okozó folyamatok lokalizálásában. A holtponttal fenyegető szituációk azonosításának alapja a dinamikusan definiált zárolási sorrend megsértése. A megközelítés előnye, hogy a mérés definiálható úgy, hogy az később tetszőleges alkalmazást ki tudjon szolgálni, valamint nem, vagy csak kis mértékben igényli a mért alkalmazás módosításáát. Hátránya, hogy csak diagnosztizál, a holtponthelyzetek tényleges kiküszöbölése emberi beavatkozást igényel. A módosítás helyének megbecsülésében a mérőeszköz javaslatokkal segíti a programozót.
     
-    A mérés lehetővé tételéhez választanom kellett, hogy dinamikus vagy statikus kódanalízist végezzen a program. Mivel a statikus kódanalízis implementálását aránytalanul nagy feladatnak ítéltem (melyet nem tudtam volna kivitelezni a rendelkezésre álló idő alatt), így a dinamikus kódanalízis mellett döntöttem. A dinamikus módszer szükségessé teszi a mért alkalmazás módosítását és átfogóbb tesztelést igényel, viszont a megvalósítása nagyságrendekkel egyszerűbb.
+    Mivel a tervezés idejében sem a GCC AST (\emph{Abstract Syntax Tree}) plugin rendszere, sem a Clang Static Analyzere nem állt azon a szinten, hogy megfelelően támogatni tudjon egy átfogó elemzést, dinamikus kódanalízis mellett döntöttem. A dinamikus módszer szükségessé teszi a mért alkalmazás módosítását és átfogóbb tesztelést igényel, viszont a megvalósítása nagyságrendekkel egyszerűbb.
     
     A mérés formai szempontból három fázisra tagolódik: adatgyűjtés, a gyűjtött adat értelmezése és feldolgozása, eredmények megjelenítése. A következőkben formalizálom ezen fázisokat anélkül, hogy kitérnék architekturális vagy implementációs részletekre.
     
     \subsection{Adatgyűjtés}
-    Mivel az alkalmazásban kialakuló zárolási sorrendek felvételére van szükség, elég, ha a futás során regisztráljuk az egyes zárak egymásutániságát. A holtpontok detektálását komolyan megnehezíti, hogy azok előfordulása gyakran egy versenyhelyzet kimenetelének függvénye, a nemdeterminisztikus viselkedés nagyon megnyújtja a reprodukálásra fordítandó időt valamint nagyon körülményes arról ismételt futtatásokkal megbizonyosodni, hogy a rendszer garantáltan holtpontmentes.
-    A \emph{deadlockHunter} nagyon fontos jellemzője, hogy a fent ismertetett bizonytalanságot kiküszöböli. Az erőforrások zárolásának és elengedésének egymásutániságát szálanként külön-külön tárolókba menti. Csak logikai sorrendet tárol, az időzítési paramétereket figyelment kívül hagyja, így lehetővé téve azt, hogy egy későbbi fázisban a szálak egyenként rögzített aktivitását időfüggetlenül aggregáljuk.
+    Mivel az alkalmazásban kialakuló zárolási sorrendek felvételére van szükség, elég, ha a futás során regisztráljuk az egyes zárak egymásutániságát. A holtpontok felderítését komolyan megnehezíti, hogy azok előfordulása gyakran egy versenyhelyzet kimenetelének függvénye, a nemdeterminisztikus viselkedés nagyon megnyújtja a reprodukálásra fordítandó időt valamint nagyon körülményes arról ismételt futtatásokkal megbizonyosodni, hogy a rendszer garantáltan holtpontmentes.
+    
+    A \emph{deadlockHunter} nagyon fontos jellemzője, hogy a fent ismertetett bizonytalanságot kiküszöböli. Az erőforrások zárolásának és elengedésének egymásutániságát szálanként külön-külön tárolókba menti. Csak logikai sorrendet tárol, az időzítési paramétereket figyelmen kívül hagyja, így lehetővé téve azt, hogy egy későbbi fázisban a szálak egyenként rögzített aktivitását időfüggetlenül aggregáljuk.
+    
     A mérés elvégzéséhez események rögzítésére van szükség. Esemény váltódik ki minden egyes alkalommal, amikor egy szál egy erőforrást zárol vagy felszabadít. Minden eseményhez logikailag két információt szükséges tárolni:
     
     \begin{description}
         \item[Esemény típusa:] Erőforrás zárolása vagy felszabadítása történt
         \item[Erőforrás azonosítása:] Bármi, ami alapján az erőforrás egyértelműen azonosítható a rendszerben, például a zár memóriacíme.
     \end{description}
-
+%
     A \emph{deadlockHunter} ezen felül tárolja a fájlt, a metódust és a kódsort, ami az eseményt kiváltó utasítást tartalmazza, így megkönnyítve a felhasználó számára az eredmények későbbi értelmezését.
-    Tehát a mérés a következőképpen formalizálható (csak a legszükségesebb jellemzőkre szorítkozva, eltekintve a később tárgyalandó implementációs részletektől): \\ \\
+    A mérés által előállított mérési eredmény struktúrája a következőképpen formalizálható (csak a legszükségesebb jellemzőkre szorítkozva, eltekintve a később tárgyalandó implementációs részletektől): \\ \\
 \texttt{Mérés: \{ Szál[] szálak \} \\
 Szál: \{ Esemény[] események \} \\
 Esemény: \{ EseményTípus típus, Erőforrás erőforrás \} \\
@@ -46,9 +45,9 @@ Erőforrás: integer \\
     \subsection{Adatfeldolgozás}
     A fent definiált adatstruktúra feldolgozása után egy irányított $\overrightarrow{G}$ gráfot szeretnénk kapni eredményül, mely a következő képpen definiálható: $v \in V(\overrightarrow{G}) \Leftrightarrow v$ által reprezentált erőforrás a mérés folyamán zárolásra került $ \wedge \; e : (u, v) \in E(\overrightarrow{G}) \Leftrightarrow (u, v \in V(\overrightarrow{G}) \; \wedge $ egy szál az $u$ által reprezentált erőforrást közvetlenül $v$ által reprezentált erőforrás zárolása előtt zárolta és $v$ zárolásakor még nem szabadította fel. $)$
     
-    Az így definiált gráf előnye, hogy szigorúan az események sorrendiségét tekintve képes az egymástól időben távol végbemenő eseményeket szálfüggetlenül összefésülni, megoldva ezzel a versenyhelyzetek nehéz vizsgálhatóságának problémáját. Tekintsük a következő mérési példát, melynek vizuális reprezentációja az~\ref{fig:g1}. ábrán látható: \\ \\
-\texttt{Szál1: zár(A), zár(B), el(B), zár(C), zár(D) \\
-Szál2: zár(A), zár(B), el(B), zár(D), zár(C) \\
+    Az így definiált gráf előnye, hogy szigorúan az események sorrendiségét tekintve képes az egymástól időben távol végbemenő eseményeket szálfüggetlenül összefésülni, megoldva ezzel a versenyhelyzetek nehéz vizsgálhatóságának problémáját. Tekintsük a következő mérési példát, melynek vizuális reprezentációja a~\ref{fig:g1}. ábrán látható: \\ \\
+\texttt{Szál1: zár(A), zár(B), nyit(B), zár(C), zár(D) \\
+Szál2: zár(A), zár(B), nyit(B), zár(D), zár(C) \\
 }
 
 \begin{figure}[h!]
@@ -87,7 +86,7 @@ Szál2: zár(A), zár(B), el(B), zár(D), zár(C) \\
     A mérést végző komponens a gyűjtött adatokat vagy egy \texttt{XML} dokumentumba sorosítja, vagy Google Protocol Buffer\footnote{Google Protocol Buffer: https://developers.google.com/protocol-buffers} formátumba menti. A kinyert dokumentumot a megjelenítő komponens beolvassa és azokból egy gráfot készít valamint egy kereső felületet biztosít. A továbbiakban a két komponens jellemző részeit mutatom be röviden.
     
     \subsubsection{Google Protocol Buffer}
-    Az \texttt{XML} formátum előnye, hogy karakteres természetéből adódóan ember számára is könnyen olvasható és kereshető, valamint gépi feldolgozása is egyszerű is rengeteg környezetben támogatott -- natív módon vagy könyvtárakon keresztül. Hátránya az \texttt{XML} formátumnak, hogy a dokumentum mérete a reprezentált információhoz képest nagyon nagy, amit körülményes tárolni és lassú beolvasni.
+    Az \texttt{XML} formátum előnye, hogy karakteres természetéből adódóan ember számára is könnyen olvasható és kereshető, valamint gépi feldolgozása is egyszerű és számos platformon támogatott -- natív módon vagy könyvtárakon keresztül. Hátránya az \texttt{XML} formátumnak, hogy a dokumentum mérete a reprezentált információhoz képest nagyon nagy, amit körülményes tárolni és lassú beolvasni.
     
     A Google Protocol Buffer előnyei és hátrányai pont fordítottak. Azonos adatmennyiség sorosítás után sokkal kisebb méretű, mint \texttt{XML} esetében, a sorosított állomány beolvasása gyorsabb, viszont maga az állomány emberi olvasó számára értelmezhetetlen és az feldolgozás különböző platformokon külön támogatást és karbantartást igényel. Mivel jelen környezetben a kis méret és gyors feldolgozás abszolút prioritást élvez, a Protocol Buffer támogatás megjelenése után az \texttt{XML} formátum csupán tesztelési és kompatibilitási okokból van jelen a rendszerben.
     
@@ -95,7 +94,7 @@ Szál2: zár(A), zár(B), el(B), zár(D), zár(C) \\
     Az adatgyűjtést úgy kellett megvalósítani, hogy a \emph{GlobalContractor} alkalmazásba könnyen integrálható legyen. A kódon végzett előzetes vizsgálat során kiderült, hogy minden kérdéses erőforrás -- többnyire rekurzív mutexek -- preprocesszor makrók egy szűk halmazának segítségével van zárolva és felszabadítva, a következő két idióma egyikével:
     
     \begin{description}
-        \item[Guard idiom:] A makró egy osztályt példányosít a stacken. A konstruktor zárolja a megadott erőforrást, a blokk végére érve a stack lebontásakor pedig a destruktor felszabadítja azt.
+        \item[Guard idiom:] A makró egy osztályt példányosít a stacken. A konstruktor zárolja a megadott erőforrást, a blokk végére érve a stack lebontásakor pedig a destruktor felszabadítja azt. Ezt C++ környezetben \texttt{RAII} idiomnak nevezzük.
         \item[Acquire/Release idiom:] Külön makrók állnak rendelkezésre az erőforrás zárolására és felszabadítására, melyek az átadott címen található struktúrán hívnak előre definiált metódusokat (\texttt{acquire()} és \texttt{release()}).
     \end{description}
 %    
@@ -166,7 +165,7 @@ Az egyes mezők tetszőlegesen kombinálhatóak és kiegészíthetőek más kara
     
 \begin{description}
     \item[Mongoose:\footnotemark] \footnotetext{C++ nyelvű webszerver: https://github.com/valenok/mongoose}Kis méretű, egyszerű C++ szoftver, ami így nagyszerű választás lenne, de sajnos nem elérhető a vállalton belül.
-    \item[Twisted:\footnotemark] \footnotetext{Python nyelvű esemény orientált hálózati motor: http://twistedmatrix.com/} Kiforrott, stabil szoftver, szimpatikus scriptnyelv; viszont nem találtam olyan Python/C++ interoperabilitási lehetőséget, ami megfelelt volna a követelményeknek.
+    \item[Twisted:\footnotemark] \footnotetext{Python nyelvű esemény orientált hálózati motor: http://twistedmatrix.com/} Kiforrott, stabil szoftver, szimpatikus szkriptnyelv; viszont nem találtam olyan Python/C++ interoperabilitási lehetőséget, ami megfelelt volna a követelményeknek.
     \item[Node.js:\footnotemark] \footnotetext{Javascript nyelvű hálózati platform: http://nodejs.org/} A követelményeket legnagyobb részben kielégíti és volt már tapasztalatom a szükséges felhasználási móddal. A Javascript/C++ integráció nem triviális és nagyon törékeny, lásd később.
    
 \end{description}
@@ -210,8 +209,8 @@ Az egyik problémát a mérés folyamán az események válogatás nélküli reg
     
     Az optimalizáció megvalósítását követően a mérőkóddal ellátott alkalmazás memóriahasználata alig tért el az alapértelmezett működés közben megfigyelhető igényektől, és üresjáratban semmilyen emelkedést nem mutatott, így teljes mértékben elérte célját.
     
-    \subsection{Az adatgyűjtés optimalizálásának teljesítménymérése \textcolor{red}{TODO}}
-    Ha sikerül hozzáférni az alkalmazáshoz, ide kerülhet egy grafikon és magyarázat a mérési eredményekről. %TODO
+    % \subsection{Az adatgyűjtés optimalizálásának teljesítménymérése}
+    % Too much effort required -- skip
     
     \subsection{A megjelenítés optimalizálása}
     Egy kiterjedt teszt futtatása -- még a fenti optimalizáció figyelembe vételével is --nagyon sok regisztrált eseményhez vezet, ami a gráf reprezentációt áttekinthetetlenné teszi. A probléma forrása, hogy olyan események is megjelennek, amelyek nem vesznek részt holtpont kialakításában. Az ilyen eseményeket reprezentáló csúcsokat eltüntethetjük, ha az eredménygráf levél csúcsainak levágását addig ismételjük, amíg van ilyen csúcs.
@@ -233,19 +232,19 @@ Az egyik problémát a mérés folyamán az események válogatás nélküli reg
 %    
     A bemutatott két módszerrel transzformált gráf nagyságrendekkel kevesebb csúcsot tartalmazott a \emph{GlobalContractor} esetében és emberi vizsgálatra sokkal alkalmasabbnak bizonyult. Tekintve, hogy a fenti tételek szerint információt nem veszítettünk, az optimalizáció hasznosnak ítélhető.
     
-    %\section{Felhasználói segédlet}
-    %\subsection{Fejlett felhasználás}
-    
     \section{Fejlesztési tervek}
     A \emph{deadlockHunter} jelen formájában használható és betölti a célját, viszont a fejlesztés és tesztelés során felmerültek további ötletek, melyek növelnék a felhasználóbarátságot vagy a project fejlődése miatt fontosak. Az örökös fejlődés igénye egy szoftver sajátja és szerves része, ezért ezen ötletek közül a következőkben ismertetem a legfontosabbakat.
     
     \subsection{Forráskód megnyitása}
     A project nem jöhetett volna létre a fejlesztés során használt számtalan nyílt forráskódú szoftver nélkül (pl.: Linux, GCC, Eclipse, git, boost, graphviz és mások), így egyértelmű a forrás megnyitásának motivációja, tekintve továbbá, hogy az eszköz általános célú, így más környezetben is hasznosnak bizonyulhat.
     
-    A \emph{deadlockHunter} már nem tartalmaz \emph{proprietary} függőségekket, azokat lecseréltem funkcionálisan ekvivalens, nyílt forráskódú alternatíváikra. Az utolsó lépés, hogy a forráskód megnyitását a Morgan Stanley megfelelő testülete is jóváhagyja. Az erőfeszítés sikeressége egyelőre bizonytalan, de valószínűsíthető. Amennyiben az akció sikerrel jár, az eszköz szabadon elérhetővé tétele az eddigi gyakorlattól eltérő, egyedülálló esemény lesz a vállalat történetében, és remélhetőleg egy új irány kezdete.
+    A \emph{deadlockHunter} már nem tartalmaz vállalati (\emph{proprietary}) függőségekket, azokat lecseréltem funkcionálisan ekvivalens, nyílt forráskódú alternatíváikra. Az utolsó lépés, hogy a forráskód megnyitását a Morgan Stanley megfelelő testülete is jóváhagyja. Az erőfeszítés sikeressége egyelőre bizonytalan, de valószínűsíthető. Amennyiben az akció sikerrel jár, az eszköz szabadon elérhetővé tétele az eddigi gyakorlattól eltérő, egyedülálló esemény lesz a vállalat történetében, és remélhetőleg egy új irány kezdete.
     
     \subsection{Felhasználói dokumentáció készítése}
     Ha sikerül a forráskód megnyitása, szükségessé válik egy mindenki számára szabadon elérhető dokumentáció elkészítése is, mely tartalmazz felhasználói segédletet és integrátori útmutatót is. Mivel jelen dokumentum a teljesség igényével részletezi az alkalmazás fontos részeit, nem alkalmas a felhasználói dokumentáció szerep betöltésére.
+    
+    \subsection{Újrafordítás nélküli felhasználás}
+    A jelenlegi változat preprocesszor makrókat használ a megfigyelendő függvényhívások monitorozhatóvá tétele érdekében. Ez a megoldás a teljes alkalmazás újrafordítását igényli a mérőeszköz be- és kikapcsolása esetén. A váltás felgyorsítása érdekében elérhetővé kell tenni egy olyan monitor megoldást, melynek bekapcsolása dinamikus linkelési időben történik, Unix szerű rendszereken az \texttt{LD\_PRELOAD}\footnote{https://en.wikipedia.org/wiki/LD\_PRELOAD} környezeti változó által biztosított felületen, míg Windows rendszereken a \emph{DLL Injection}\footnote{https://en.wikipedia.org/wiki/DLL\_Injection} megoldáson keresztül.
     
     \subsection{Automatikus kiegészítés a keresőben}
     A grafikus felületet az egyszerűbb és kényelmesebb használat érdekében kell úgy továbbfejleszteni, hogy a keresőben megjelenjenek a lehetséges, illeszkedő keresőkifejezések, automatikus kiegészítés formájában. Ehhez meg kell teremteni a lehetőséget, hogy a C++ oldal kiajánlja a rendelkezésre álló opciókat.
