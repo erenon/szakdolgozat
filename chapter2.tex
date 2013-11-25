@@ -83,12 +83,13 @@ Szál2: zár(A), zár(B), nyit(B), zár(D), zár(C) \\
   \label{fig:architecture}
 \end{figure}    
 %    
-    A mérést végző komponens a gyűjtött adatokat vagy egy \texttt{XML} dokumentumba sorosítja, vagy Google Protocol Buffer\footnote{Google Protocol Buffer: https://developers.google.com/protocol-buffers} formátumba menti. A kinyert dokumentumot a megjelenítő komponens beolvassa és azokból egy gráfot készít valamint egy kereső felületet biztosít. A továbbiakban a két komponens jellemző részeit mutatom be röviden.
+    A mérést végző komponens a gyűjtött adatokat vagy egy \texttt{XML} dokumentumba sorosítja, vagy Google Protocol Buffer\footnote{Google Protocol Buffer: https://developers.google.com/protocol-buffers} formátumba menti. 
     
-    \subsubsection{Google Protocol Buffer}
-    Az \texttt{XML} formátum előnye, hogy karakteres természetéből adódóan ember számára is könnyen olvasható és kereshető, valamint gépi feldolgozása is egyszerű és számos platformon támogatott -- natív módon vagy könyvtárakon keresztül. Hátránya az \texttt{XML} formátumnak, hogy a dokumentum mérete a reprezentált információhoz képest nagyon nagy, amit körülményes tárolni és lassú beolvasni.
+    Az \texttt{XML} formátum előnye, hogy karakteres természetéből adódóan ember számára is könnyen olvasható és kereshető, valamint gépi feldolgozása is egyszerű és számos platformon támogatott -- natív módon vagy könyvtárakon keresztül. Az egyszerű olvashatóságból következően -- megfelelően beszédes séma kialakítása esetén -- a dokumentum önleírónak tekinthető, ami a későbbi értelmezők megvalósítását nagyban megkönnyíti. Hátránya az \texttt{XML} formátumnak, hogy a dokumentum mérete a reprezentált információhoz képest nagyon nagy, amit körülményes tárolni és lassú beolvasni.
     
-    A Google Protocol Buffer előnyei és hátrányai pont fordítottak. Azonos adatmennyiség sorosítás után sokkal kisebb méretű, mint \texttt{XML} esetében, a sorosított állomány beolvasása gyorsabb, viszont maga az állomány emberi olvasó számára értelmezhetetlen és az feldolgozás különböző platformokon külön támogatást és karbantartást igényel. Mivel jelen környezetben a kis méret és gyors feldolgozás abszolút prioritást élvez, a Protocol Buffer támogatás megjelenése után az \texttt{XML} formátum csupán tesztelési és kompatibilitási okokból van jelen a rendszerben.
+    A Google Protocol Buffer előnyei és hátrányai pont fordítottak. Azonos adatmennyiség sorosítás után sokkal kisebb méretű, mint \texttt{XML} esetében, a sorosított állomány beolvasása gyorsabb, viszont maga az állomány emberi olvasó számára értelmezhetetlen és az feldolgozás különböző platformokon külön támogatást és karbantartást igényel. A formátumot leíró \texttt{proto} fájl hiányában a tárolt információ egyértelműen nem állítható vissza a bináris formából. Mivel jelen környezetben a kis méret és gyors feldolgozás abszolút prioritást élvez, a Protocol Buffer támogatás megjelenése után az \texttt{XML} formátum csupán tesztelési és kompatibilitási okokból van jelen a rendszerben.
+    
+    A mérés során az adatgyűjtő komponensből kinyert dokumentumot a megjelenítő komponens beolvassa és azokból egy gráfot készít valamint egy kereső felületet biztosít. A továbbiakban a két komponens jellemző részeit mutatom be röviden.
     
     \subsection{Adatgyűjtés}
     Az adatgyűjtést úgy kellett megvalósítani, hogy a \emph{GlobalContractor} alkalmazásba könnyen integrálható legyen. A kódon végzett előzetes vizsgálat során kiderült, hogy minden kérdéses erőforrás -- többnyire rekurzív mutexek -- preprocesszor makrók egy szűk halmazának segítségével van zárolva és felszabadítva, a következő két idióma egyikével:
@@ -211,6 +212,7 @@ Az egyik problémát a mérés folyamán az események válogatás nélküli reg
     
     % \subsection{Az adatgyűjtés optimalizálásának teljesítménymérése}
     % Too much effort required -- skip
+    \vfill
     
     \subsection{A megjelenítés optimalizálása}
     Egy kiterjedt teszt futtatása -- még a fenti optimalizáció figyelembe vételével is --nagyon sok regisztrált eseményhez vezet, ami a gráf reprezentációt áttekinthetetlenné teszi. A probléma forrása, hogy olyan események is megjelennek, amelyek nem vesznek részt holtpont kialakításában. Az ilyen eseményeket reprezentáló csúcsokat eltüntethetjük, ha az eredménygráf levél csúcsainak levágását addig ismételjük, amíg van ilyen csúcs.
