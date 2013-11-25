@@ -109,6 +109,7 @@ A félvezető alapú processzorok tranzisztorszáma hozzávetőlegesen megjelen�
     Hasonló megoldást alkalmaz a Microsoft .NET Framework \emph{Monitor.Enter} metódusa. Amennyiben a monitort üresen találja, belépteti a szálat és zárolja azt, rendszerhívás nélkül, \texttt{CAS} utasítással. Ha zárva találta a monitort vagy nem sikerült a zárolás, először megpróbálkozik egy rövid tevékeny várakozással, elkerülve így a szál felfüggesztését. Ha az időzített \emph{spinning} is sikertelen, a szál a várakozási sorba kerül.\footnote{A működés a http://www.microsoft.com/en-us/download/details.aspx?id=4917 címről letölthető SSCLI 2.0 csomagban, a \texttt{clr/src/vm/syncblk.cpp} fájlban figyelhető meg, az \texttt{AwareLock::Enter} metódustól indulva}
     
     % TODO cite benchmarks?
+    Az optimista megközelítésnek és a szál felfüggesztésének elkerülésére törekvésnek köszönhetően a \emph{futex} és a \emph{Monitor.Enter} által alkalmazott megközelítés nagyságrendileg gyorsabb, mint a naiv megoldás, amennyiben a zár általában szabad.
     
     \vfill
         
